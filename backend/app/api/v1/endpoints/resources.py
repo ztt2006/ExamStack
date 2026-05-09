@@ -16,24 +16,14 @@ router = APIRouter()
 
 @router.post("")
 def create_resource(
-    title: str = Form(...),
     description: str = Form(...),
-    subject_id: int = Form(...),
-    term: str = Form(...),
-    resource_type: str = Form(...),
-    tags: str = Form(default=""),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     resource = ResourceService(db).create_resource(
         current_user=current_user,
-        title=title,
         description=description,
-        subject_id=subject_id,
-        term=term,
-        resource_type=resource_type,
-        tags=tags,
         upload_file=file,
     )
     return success_response(ResourceService(db).to_response(resource).model_dump(mode="json"), status_code=201)
@@ -42,16 +32,12 @@ def create_resource(
 @router.get("")
 def list_resources(
     keyword: str | None = None,
-    subject_id: int | None = None,
-    resource_type: str | None = None,
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db),
 ):
     payload = ResourceService(db).list_resources(
         keyword=keyword,
-        subject_id=subject_id,
-        resource_type=resource_type,
         page=page,
         page_size=page_size,
     )
@@ -66,8 +52,9 @@ def get_resource_detail(resource_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{resource_id}/preview")
 def preview_resource(resource_id: int, db: Session = Depends(get_db)):
-    resource = ResourceService(db).get_resource(resource_id)
-    return FileResponse(path=resource.file_path, filename=resource.original_filename, media_type=resource.mime_type)
+    service = ResourceService(db)
+    resource = service.get_resource(resource_id)
+    return service.build_preview_response(resource)
 
 
 @router.get("/{resource_id}/file")

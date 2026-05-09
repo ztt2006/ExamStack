@@ -4,7 +4,7 @@ import { AlertCircle, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { getCurrentUser, login, register } from "@/api/auth";
+import { getCurrentUserWithToken, login, register } from "@/api/auth";
 import { BrandMark } from "@/components/common/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
@@ -23,7 +23,7 @@ export function RegisterPage() {
       setErrorMessage("");
       await register({ username, email, school, password });
       const token = await login({ account: email, password });
-      const user = await getCurrentUser();
+      const user = await getCurrentUserWithToken(token.access_token);
       setSession(token.access_token, user);
       await navigate("/", { replace: true });
     },
@@ -33,16 +33,14 @@ export function RegisterPage() {
   );
 
   return (
-    <div className="grid min-h-[78dvh] items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-      <section className="campus-panel order-2 p-6 sm:p-8 lg:order-1">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[oklch(0.47_0.05_250)]">
-          Register
-        </p>
-        <h1 className="mt-3 font-heading text-4xl font-black text-[oklch(0.23_0.05_255)]">
-          成为资料共享的一员
+    <div className="grid min-h-[78dvh] items-center gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="panel-card order-2 p-6 sm:p-8 xl:order-1">
+        <div className="section-badge">Register</div>
+        <h1 className="section-title mt-3">
+          创建新的平台账号
         </h1>
-        <p className="mt-3 text-sm leading-7 text-[oklch(0.41_0.03_250)]">
-          注册后默认获得 20 积分，你可以先浏览资料，也可以上传自己的整理内容为社区添火。
+        <p className="page-copy mt-3">
+          注册后即可进入极简文档台，开始上传和管理自己的文件。
         </p>
 
         <form
@@ -96,7 +94,7 @@ export function RegisterPage() {
           <Button
             type="submit"
             size="lg"
-            className="w-full rounded-full bg-[oklch(0.63_0.18_29)] text-[oklch(0.98_0.02_95)]"
+            className="admin-primary-btn w-full justify-center"
             disabled={registerRequest.loading}
           >
             <UserPlus />
@@ -104,42 +102,38 @@ export function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-sm text-[oklch(0.42_0.03_250)]">
+        <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
           已经有账号？
-          <Link to="/login" className="ml-2 font-semibold text-[oklch(0.45_0.13_30)]">
+          <Link to="/login" className="ml-2 font-semibold text-[var(--color-sky-strong)]">
             去登录
           </Link>
         </p>
       </section>
 
-      <section className="hero-campus order-1 min-h-[620px] p-8 lg:order-2">
-        <div className="flex h-full max-w-xl flex-col justify-between">
+      <section className="panel-card hero-panel order-1 min-h-[560px] p-8 xl:order-2">
+        <div className="flex h-full flex-col justify-between">
           <BrandMark />
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[oklch(0.45_0.12_35)]">
-              新同学入场
-            </p>
-            <h2 className="mt-4 font-heading text-5xl font-black leading-none text-[oklch(0.24_0.05_255)]">
-              你的笔记
-              <br />
-              也值得被看见
+            <div className="section-badge">New Account</div>
+            <h2 className="page-title mt-4 max-w-[11ch]">
+              注册后立刻开始管理你的文档
             </h2>
-            <p className="mt-5 max-w-[42ch] text-sm leading-8 text-[oklch(0.39_0.04_248)]">
-              这不是一个冷清的文件夹站点，而是一条正在循环的校园资料流。你上传过的内容，会继续帮到下一位期末周的同学。
+            <p className="page-copy mt-5 max-w-[46ch]">
+              平台只保留最核心的文档工作流，让录入和检索都尽量直接，不再需要额外业务字段。
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-[1.6rem] bg-[oklch(0.98_0.03_94/.86)] p-4">
-              <p className="font-heading text-2xl font-black text-[oklch(0.28_0.05_255)]">20</p>
-              <p className="mt-1 text-sm text-[oklch(0.39_0.04_248)]">初始积分</p>
+            <div className="metric-card">
+              <p className="metric-value">2</p>
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">主导航</p>
             </div>
-            <div className="rounded-[1.6rem] bg-[oklch(0.98_0.03_94/.86)] p-4">
-              <p className="font-heading text-2xl font-black text-[oklch(0.28_0.05_255)]">+5</p>
-              <p className="mt-1 text-sm text-[oklch(0.39_0.04_248)]">每次上传</p>
+            <div className="metric-card">
+              <p className="metric-value">1</p>
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">资料表格</p>
             </div>
-            <div className="rounded-[1.6rem] bg-[oklch(0.98_0.03_94/.86)] p-4">
-              <p className="font-heading text-2xl font-black text-[oklch(0.28_0.05_255)]">-5</p>
-              <p className="mt-1 text-sm text-[oklch(0.39_0.04_248)]">每次下载</p>
+            <div className="metric-card">
+              <p className="metric-value">2</p>
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">上传字段</p>
             </div>
           </div>
         </div>

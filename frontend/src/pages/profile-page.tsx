@@ -4,7 +4,7 @@ import { AlertCircle, Medal, NotebookPen, UserCircle2 } from "lucide-react";
 
 import { getMyProfile, getMyResources } from "@/api/users";
 import { EmptyState } from "@/components/common/empty-state";
-import { ResourceCard } from "@/components/resource/resource-card";
+import { ResourceTable } from "@/components/resource/resource-table";
 
 export function ProfilePage() {
   const profileRequest = useRequest(getMyProfile);
@@ -13,7 +13,7 @@ export function ProfilePage() {
   if (profileRequest.loading || myResourcesRequest.loading) {
     return (
       <div className="flex min-h-[50dvh] items-center justify-center">
-        <Loader color="orange" />
+        <Loader color="sky" />
       </div>
     );
   }
@@ -37,20 +37,18 @@ export function ProfilePage() {
   return (
     <div className="space-y-8">
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="panel-card p-6 sm:p-8">
+        <div className="panel-card hero-panel p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-[oklch(0.52_0.01_255)]">
-                My Space
-              </p>
-              <h1 className="mt-3 font-heading text-3xl font-semibold text-[oklch(0.18_0.01_255)]">
+              <div className="section-badge">My Space</div>
+              <h1 className="section-title mt-3 text-[2.35rem]">
                 {profile.username} 的共享空间
               </h1>
-              <p className="mt-3 text-sm leading-7 text-[oklch(0.44_0.01_255)]">
+              <p className="page-copy mt-3">
                 {profile.school} · 继续上传资料，为自己补积分，也让更多同学少走一点弯路。
               </p>
             </div>
-            <div className="grid h-14 w-14 place-items-center rounded-xl bg-[oklch(0.96_0.01_255)] text-[oklch(0.28_0.01_255)]">
+            <div className="metric-icon h-14 w-14">
               <UserCircle2 size={30} />
             </div>
           </div>
@@ -76,7 +74,7 @@ export function ProfilePage() {
               <p className="metric-label">
                 社区状态
               </p>
-              <p className="mt-2 font-heading text-2xl font-semibold text-[oklch(0.18_0.01_255)]">
+              <p className="mt-2 font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
                 持续共享中
               </p>
             </div>
@@ -85,14 +83,14 @@ export function ProfilePage() {
 
         <div className="panel-card p-6">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-[oklch(0.96_0.01_255)] text-[oklch(0.28_0.01_255)]">
+            <div className="metric-icon h-11 w-11">
               <Medal size={20} />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-[oklch(0.52_0.01_255)]">
+              <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
                 积分进度
               </p>
-              <h2 className="font-heading text-2xl font-semibold text-[oklch(0.18_0.01_255)]">
+              <h2 className="font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
                 向下一个 50 分节点冲刺
               </h2>
             </div>
@@ -101,10 +99,10 @@ export function ProfilePage() {
             value={progressValue}
             size="xl"
             radius="xl"
-            color="dark"
+            color="sky"
             className="mt-6"
           />
-          <p className="mt-4 text-sm leading-7 text-[oklch(0.44_0.01_255)]">
+          <p className="page-copy mt-4">
             每上传一份资料就会补回 5 分。如果你近期常下载，可以把自己整理的重点、图表或真题一并分享出来。
           </p>
         </div>
@@ -113,14 +111,14 @@ export function ProfilePage() {
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[oklch(0.52_0.01_255)]">
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
               My Uploads
             </p>
-            <h2 className="mt-2 font-heading text-2xl font-semibold text-[oklch(0.18_0.01_255)]">
+            <h2 className="section-title mt-2">
               我上传过的资料
             </h2>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-[oklch(0.9_0.01_255)] bg-white px-4 py-2 text-sm text-[oklch(0.38_0.01_255)]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.9_0.03_230)] bg-[oklch(0.99_0.012_232/.9)] px-4 py-2 text-sm text-[var(--color-ink-soft)]">
             <NotebookPen size={16} />
             {profile.uploaded_count} 份共享内容
           </div>
@@ -132,11 +130,7 @@ export function ProfilePage() {
             description="你的整理内容、复习提纲和往年题都可以直接发到广场。第一份上传，就能先把积分赚回来。"
           />
         ) : (
-          <div className="grid gap-5 xl:grid-cols-2">
-            {myResourcesRequest.data?.items.map((resource) => (
-              <ResourceCard key={resource.id} resource={resource} />
-            ))}
-          </div>
+          <ResourceTable items={myResourcesRequest.data?.items ?? []} />
         )}
       </section>
     </div>

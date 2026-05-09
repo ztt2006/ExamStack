@@ -1,6 +1,11 @@
+from html import escape
+from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
+from zipfile import BadZipFile, ZipFile
 
 from fastapi import UploadFile
+from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -11,53 +16,33 @@ from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.common import PaginationMeta
 from app.schemas.resource import DownloadActionResponse, ResourceListResponse, ResourceResponse
-from app.services.points_service import PointsService
-from app.services.subject_service import SubjectService
-from app.utils.file import normalize_resource_type, save_upload_file
+from app.utils.file import save_upload_file
 
 
 class ResourceService:
     def __init__(self, db: Session):
         self.db = db
         self.settings = get_settings()
-        self.points_service = PointsService(db)
-        self.subject_service = SubjectService(db)
 
     def create_resource(
         self,
         *,
         current_user: User,
-        title: str,
         description: str,
-        subject_id: int,
-        term: str,
-        resource_type: str,
-        tags: str,
         upload_file: UploadFile,
     ) -> Resource:
-        subject = self.subject_service.get_by_id(subject_id)
-        if subject is None:
-            raise AppException(message="subject not found", code=4041, status_code=404)
-
-        normalized_type = normalize_resource_type(resource_type)
         stored_filename, file_path, file_size = save_upload_file(upload_file)
 
         resource = Resource(
-            title=title,
             description=description,
-            term=term,
-            resource_type=normalized_type,
-            tags=tags,
             original_filename=upload_file.filename or stored_filename,
             stored_filename=stored_filename,
             file_path=file_path,
             file_size=file_size,
             mime_type=upload_file.content_type or "application/octet-stream",
             uploader_id=current_user.id,
-            subject_id=subject_id,
         )
         self.db.add(resource)
-        self.points_service.add_points(current_user, self.settings.upload_reward_points, "upload_reward")
         self.db.commit()
         self.db.refresh(resource)
         return resource
@@ -66,14 +51,12 @@ class ResourceService:
         self,
         *,
         keyword: str | None = None,
-        subject_id: int | None = None,
-        resource_type: str | None = None,
         page: int = 1,
         page_size: int = 10,
     ) -> ResourceListResponse:
         statement: Select[tuple[Resource]] = (
             select(Resource)
-            .options(joinedload(Resource.subject), joinedload(Resource.uploader))
+            .options(joinedload(Resource.uploader))
             .order_by(Resource.created_at.desc(), Resource.id.desc())
         )
 
@@ -81,15 +64,10 @@ class ResourceService:
             keyword_like = f"%{keyword}%"
             statement = statement.where(
                 or_(
-                    Resource.title.ilike(keyword_like),
                     Resource.description.ilike(keyword_like),
-                    Resource.tags.ilike(keyword_like),
+                    Resource.original_filename.ilike(keyword_like),
                 )
             )
-        if subject_id:
-            statement = statement.where(Resource.subject_id == subject_id)
-        if resource_type:
-            statement = statement.where(Resource.resource_type == normalize_resource_type(resource_type))
 
         total = self.db.execute(select(func.count()).select_from(statement.subquery())).scalar_one()
         items = list(
@@ -103,7 +81,7 @@ class ResourceService:
     def list_user_resources(self, *, user_id: int, page: int = 1, page_size: int = 10) -> ResourceListResponse:
         statement: Select[tuple[Resource]] = (
             select(Resource)
-            .options(joinedload(Resource.subject), joinedload(Resource.uploader))
+            .options(joinedload(Resource.uploader))
             .where(Resource.uploader_id == user_id)
             .order_by(Resource.created_at.desc(), Resource.id.desc())
         )
@@ -119,7 +97,7 @@ class ResourceService:
     def get_resource(self, resource_id: int) -> Resource:
         statement = (
             select(Resource)
-            .options(joinedload(Resource.subject), joinedload(Resource.uploader))
+            .options(joinedload(Resource.uploader))
             .where(Resource.id == resource_id)
         )
         resource = self.db.execute(statement).scalar_one_or_none()
@@ -129,37 +107,140 @@ class ResourceService:
 
     def handle_download(self, resource_id: int, current_user: User) -> DownloadActionResponse:
         resource = self.get_resource(resource_id)
-        self.points_service.deduct_points(current_user, self.settings.download_cost_points, "download_cost")
         resource.download_count += 1
         self.db.add(DownloadRecord(user_id=current_user.id, resource_id=resource.id))
         self.db.commit()
-        self.db.refresh(current_user)
         return DownloadActionResponse(
             resource_id=resource.id,
             download_url=f"/api/v1/resources/{resource.id}/file",
-            points_after=current_user.points,
+        )
+
+    def build_preview_response(self, resource: Resource):
+        if self._is_docx(resource):
+            return HTMLResponse(content=self._render_docx_preview(resource), media_type="text/html")
+
+        return FileResponse(
+            path=resource.file_path,
+            filename=Path(resource.original_filename).name,
+            media_type=resource.mime_type,
+            content_disposition_type="inline",
         )
 
     def to_response(self, resource: Resource) -> ResourceResponse:
         return ResourceResponse(
             id=resource.id,
-            title=resource.title,
             description=resource.description,
-            term=resource.term,
-            resource_type=resource.resource_type,
-            tags=[tag for tag in resource.tags.split(",") if tag],
             original_filename=resource.original_filename,
             mime_type=resource.mime_type,
             file_size=resource.file_size,
             download_count=resource.download_count,
-            subject_id=resource.subject_id,
-            subject_name=resource.subject.name,
             uploader_id=resource.uploader_id,
             uploader_name=resource.uploader.username,
             preview_url=f"/api/v1/resources/{resource.id}/preview",
             download_url=f"/api/v1/resources/{resource.id}/file",
             created_at=resource.created_at,
         )
+
+    def _is_docx(self, resource: Resource) -> bool:
+        suffix = Path(resource.original_filename).suffix.lower()
+        return (
+            resource.mime_type
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            or suffix == ".docx"
+        )
+
+    def _render_docx_preview(self, resource: Resource) -> str:
+        try:
+            with ZipFile(resource.file_path) as archive:
+                document_xml = archive.read("word/document.xml")
+        except FileNotFoundError as exc:
+            raise AppException(message="resource file not found", code=4043, status_code=404) from exc
+        except (KeyError, BadZipFile) as exc:
+            raise AppException(message="docx preview unavailable", code=4006, status_code=400) from exc
+
+        namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        root = ElementTree.fromstring(document_xml)
+        paragraphs: list[str] = []
+
+        for paragraph in root.findall(".//w:body/w:p", namespace):
+            parts = [node.text or "" for node in paragraph.findall(".//w:t", namespace)]
+            text = "".join(parts).strip()
+            if text:
+                paragraphs.append(text)
+
+        if not paragraphs:
+            paragraphs = ["该 Word 文档暂时没有可提取的正文内容。"]
+
+        rendered_paragraphs = "\n".join(
+            f"<p>{escape(paragraph)}</p>" for paragraph in paragraphs
+        )
+        title = escape(resource.original_filename)
+        description = escape(resource.description)
+
+        return f"""<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <style>
+      :root {{
+        color-scheme: light;
+        --bg: #f4faff;
+        --paper: #ffffff;
+        --border: #d8e8f6;
+        --text: #1f3347;
+        --muted: #67829a;
+      }}
+      * {{
+        box-sizing: border-box;
+      }}
+      body {{
+        margin: 0;
+        padding: 24px;
+        background: linear-gradient(180deg, #eef8ff 0%, var(--bg) 100%);
+        color: var(--text);
+        font: 16px/1.8 "Segoe UI", "Microsoft YaHei", sans-serif;
+      }}
+      main {{
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: var(--paper);
+        box-shadow: 0 18px 40px rgba(118, 162, 201, 0.12);
+      }}
+      h1 {{
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.3;
+      }}
+      .desc {{
+        margin: 10px 0 24px;
+        color: var(--muted);
+      }}
+      .doc {{
+        display: grid;
+        gap: 14px;
+      }}
+      p {{
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>{title}</h1>
+      <p class="desc">{description}</p>
+      <section class="doc">
+        {rendered_paragraphs}
+      </section>
+    </main>
+  </body>
+</html>"""
 
     def profile_summary(self, current_user: User) -> dict[str, Any]:
         resources_count = self.db.execute(

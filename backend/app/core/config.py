@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     app_debug: bool = Field(default=True, alias="APP_DEBUG")
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
     app_port: int = Field(default=8000, alias="APP_PORT")
-    database_url: str = Field(default="sqlite:///./examstack.db", alias="DATABASE_URL")
+    database_url: str = Field(
+        default="postgresql+psycopg://postgres:postgres@127.0.0.1:5432/examstack",
+        alias="DATABASE_URL",
+    )
     jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=60 * 24 * 7, alias="JWT_EXPIRE_MINUTES")

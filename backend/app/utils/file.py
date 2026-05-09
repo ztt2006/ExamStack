@@ -7,26 +7,6 @@ from app.core.config import get_settings
 from app.core.exceptions import AppException
 
 
-ALLOWED_RESOURCE_TYPES = {"pdf", "image", "document"}
-
-
-def normalize_resource_type(resource_type: str) -> str:
-    allowed_alias = {
-        "pdf": "pdf",
-        "image": "image",
-        "document": "document",
-        "doc": "document",
-        "docx": "document",
-        "png": "image",
-        "jpg": "image",
-        "jpeg": "image",
-    }
-    normalized = allowed_alias.get(resource_type.lower())
-    if normalized is None:
-        raise AppException(message="unsupported resource type", code=4004, status_code=400)
-    return normalized
-
-
 def save_upload_file(upload_file: UploadFile) -> tuple[str, str, int]:
     settings = get_settings()
     suffix = Path(upload_file.filename or "").suffix or ".bin"

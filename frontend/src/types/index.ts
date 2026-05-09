@@ -34,17 +34,11 @@ export interface Subject {
 
 export interface Resource {
   id: number;
-  title: string;
   description: string;
-  term: string;
-  resource_type: string;
-  tags: string[];
   original_filename: string;
   mime_type: string;
   file_size: number;
   download_count: number;
-  subject_id: number;
-  subject_name: string;
   uploader_id: number;
   uploader_name: string;
   preview_url: string;
@@ -69,13 +63,10 @@ export interface ProfileSummary {
 export interface DownloadAction {
   resource_id: number;
   download_url: string;
-  points_after: number;
 }
 
 export interface ResourceFilters {
   keyword?: string;
-  subject_id?: number;
-  resource_type?: string;
   page?: number;
   page_size?: number;
 }

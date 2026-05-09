@@ -27,3 +27,12 @@ export async function getCurrentUser() {
   const response = await apiClient.get<ApiResponse<User>>("/auth/me");
   return response.data.data;
 }
+
+export async function getCurrentUserWithToken(token: string) {
+  const response = await apiClient.get<ApiResponse<User>>("/auth/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data.data;
+}

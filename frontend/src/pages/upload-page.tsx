@@ -1,10 +1,10 @@
-import { Alert, FileInput, Select, TextInput, Textarea } from "@mantine/core";
+import { Alert, FileInput, Modal, Select, TextInput, Textarea } from "@mantine/core";
 import { useRequest } from "ahooks";
-import { AlertCircle, UploadCloud } from "lucide-react";
+import { AlertCircle, Plus, Shapes, UploadCloud } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { getSubjects } from "@/api/subjects";
+import { createSubject, getSubjects } from "@/api/subjects";
 import { uploadResource } from "@/api/resources";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +18,12 @@ export function UploadPage() {
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [subjectModalOpened, setSubjectModalOpened] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectCode, setNewSubjectCode] = useState("");
+  const [newSubjectCategory, setNewSubjectCategory] = useState("");
+  const [newSubjectDescription, setNewSubjectDescription] = useState("");
+  const [subjectErrorMessage, setSubjectErrorMessage] = useState("");
 
   const subjectsRequest = useRequest(getSubjects);
 
@@ -38,12 +44,7 @@ export function UploadPage() {
       }
       setErrorMessage("");
       const resource = await uploadResource({
-        title,
         description,
-        subject_id: Number(subjectId),
-        term,
-        resource_type: resourceType,
-        tags,
         file,
       });
       await navigate(`/resources/${resource.id}`);
@@ -53,18 +54,44 @@ export function UploadPage() {
     },
   );
 
+  const createSubjectRequest = useRequest(
+    async () => {
+      setSubjectErrorMessage("");
+      const subject = await createSubject({
+        name: newSubjectName,
+        code: newSubjectCode,
+        category: newSubjectCategory,
+        description: newSubjectDescription || undefined,
+      });
+      await subjectsRequest.refresh();
+      setSubjectId(String(subject.id));
+      setSubjectModalOpened(false);
+      setNewSubjectName("");
+      setNewSubjectCode("");
+      setNewSubjectCategory("");
+      setNewSubjectDescription("");
+      return subject;
+    },
+    {
+      manual: true,
+      onError: (error) => {
+        setSubjectErrorMessage(
+          error instanceof Error ? error.message : "创建科目失败，请稍后再试。",
+        );
+      },
+    },
+  );
+
   return (
     <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
       <section className="space-y-4">
-        <div className="panel-card p-6">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-[oklch(0.52_0.01_255)]">
-            Upload Mission
-          </p>
-          <h1 className="mt-3 font-heading text-3xl font-semibold text-[oklch(0.18_0.01_255)]">
+        <div className="panel-card hero-panel p-6">
+          <div className="section-badge">Upload Mission</div>
+          <h1 className="section-title mt-3 text-[2.25rem]">
             把你手里的资料
             统一录入平台
           </h1>
-          <p className="mt-4 text-sm leading-7 text-[oklch(0.44_0.01_255)]">
+          <p className="page-copy mt-4">
             支持新增 PDF、图片和文档资料。提交后资料会进入共享列表，并自动获得积分奖励。
           </p>
         </div>
@@ -75,25 +102,26 @@ export function UploadPage() {
               <p className="metric-label">
                 支持格式
               </p>
-              <p className="mt-2 text-sm font-semibold text-[oklch(0.18_0.01_255)]">PDF / 图片 / 文档</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--color-ink-strong)]">PDF / 图片 / 文档</p>
             </div>
             <div className="metric-card">
               <p className="metric-label">
                 单次收益
               </p>
-              <p className="mt-2 text-sm font-semibold text-[oklch(0.18_0.01_255)]">+5 积分</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--color-ink-strong)]">+5 积分</p>
             </div>
             <div className="metric-card">
               <p className="metric-label">
                 社区曝光
               </p>
-              <p className="mt-2 text-sm font-semibold text-[oklch(0.18_0.01_255)]">即时进入广场</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--color-ink-strong)]">即时进入广场</p>
             </div>
           </div>
         </div>
       </section>
 
       <section className="panel-card p-6 sm:p-8">
+        <div className="section-badge mb-5">Publish Resource</div>
         <form
           className="grid gap-4"
           onSubmit={(event) => {
@@ -119,16 +147,37 @@ export function UploadPage() {
             required
           />
           <div className="grid gap-4 md:grid-cols-2">
-            <Select
-              label="所属科目"
-              placeholder="选择科目"
-              value={subjectId}
-              onChange={(value) => setSubjectId(value ?? "")}
-              data={subjectOptions}
-              radius="xl"
-              searchable
-              required
-            />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-medium text-[var(--color-ink-strong)]">
+                  所属科目
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-sky-strong)]"
+                  onClick={() => setSubjectModalOpened(true)}
+                >
+                  <Plus size={14} />
+                  新建科目
+                </button>
+              </div>
+              <Select
+                placeholder={
+                  subjectsRequest.loading ? "正在加载科目..." : "选择科目"
+                }
+                value={subjectId}
+                onChange={(value) => setSubjectId(value ?? "")}
+                data={subjectOptions}
+                radius="xl"
+                searchable
+                nothingFoundMessage="没有可用科目，先新建一个"
+                disabled={subjectsRequest.loading}
+                required
+              />
+              <p className="text-xs text-[var(--color-ink-soft)]">
+                如果列表为空，可以先新建科目，再继续上传资料。
+              </p>
+            </div>
             <TextInput
               label="学期"
               placeholder="例如：2026 Spring"
@@ -191,6 +240,92 @@ export function UploadPage() {
           </Button>
         </form>
       </section>
+
+      <Modal
+        opened={subjectModalOpened}
+        onClose={() => setSubjectModalOpened(false)}
+        title="新建科目"
+        centered
+        radius="xl"
+      >
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void createSubjectRequest.run();
+          }}
+        >
+          <div className="rounded-[1.1rem] border border-[oklch(0.91_0.03_228)] bg-[oklch(0.995_0.012_230/.95)] p-4">
+            <div className="flex items-start gap-3">
+              <div className="metric-icon h-10 w-10">
+                <Shapes size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+                  让上传流程不断线
+                </p>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+                  创建成功后会自动刷新科目列表，并直接帮你选中新科目。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <TextInput
+            label="科目名称"
+            placeholder="例如：数据结构"
+            value={newSubjectName}
+            onChange={(event) => setNewSubjectName(event.currentTarget.value)}
+            radius="xl"
+            required
+          />
+          <TextInput
+            label="科目代码"
+            placeholder="例如：CS202"
+            value={newSubjectCode}
+            onChange={(event) => setNewSubjectCode(event.currentTarget.value)}
+            radius="xl"
+            required
+          />
+          <TextInput
+            label="科目分类"
+            placeholder="例如：计算机"
+            value={newSubjectCategory}
+            onChange={(event) => setNewSubjectCategory(event.currentTarget.value)}
+            radius="xl"
+            required
+          />
+          <Textarea
+            label="科目说明"
+            placeholder="可选，补充这个科目的资料范围或说明"
+            value={newSubjectDescription}
+            onChange={(event) => setNewSubjectDescription(event.currentTarget.value)}
+            radius="xl"
+            minRows={3}
+          />
+
+          {subjectErrorMessage ? (
+            <Alert
+              icon={<AlertCircle size={16} />}
+              color="red"
+              radius="xl"
+              title="创建科目失败"
+            >
+              {subjectErrorMessage}
+            </Alert>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="admin-primary-btn w-full justify-center"
+            disabled={createSubjectRequest.loading}
+          >
+            <Plus />
+            {createSubjectRequest.loading ? "正在创建..." : "创建并选中科目"}
+          </Button>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -34,14 +34,3 @@ export function formatDate(date?: string) {
     minute: "2-digit",
   }).format(new Date(date));
 }
-
-export function getResourceTone(resourceType: string) {
-  switch (resourceType) {
-    case "pdf":
-      return "题库 PDF";
-    case "image":
-      return "课堂图片";
-    default:
-      return "整理文档";
-  }
-}

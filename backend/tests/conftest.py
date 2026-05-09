@@ -1,6 +1,9 @@
+import os
 from pathlib import Path
 
 import pytest
+
+os.environ["DATABASE_URL"] = "sqlite:///./test_examstack.db"
 
 from app.core.config import get_settings
 from app.db.base import Base

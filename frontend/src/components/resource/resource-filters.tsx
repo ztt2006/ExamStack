@@ -23,11 +23,15 @@ export function ResourceFilters({
   onResourceTypeChange,
 }: ResourceFiltersProps) {
   return (
-    <section className="panel-card p-5">
-      <div className="mb-4 flex items-center gap-2 text-[oklch(0.42_0.01_255)]">
-        <SlidersHorizontal size={16} />
-        <span className="text-sm font-medium">筛选条件</span>
+    <section className="panel-card p-5 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[var(--color-sky-strong)]">
+          <SlidersHorizontal size={16} />
+          <span className="text-sm font-medium">筛选条件</span>
+        </div>
+        <span className="sky-chip">按课程、类型、关键词快速收束结果</span>
       </div>
+      <div className="cloud-divider mb-5" />
       <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr_1fr]">
         <TextInput
           value={keyword}
@@ -38,9 +42,10 @@ export function ResourceFilters({
           leftSection={<Search size={16} />}
           styles={{
             input: {
-              background: "white",
-              borderColor: "oklch(0.9 0.01 255)",
-              minHeight: 44,
+              background: "oklch(0.995 0.012 230 / 0.92)",
+              borderColor: "oklch(0.9 0.03 230)",
+              minHeight: 48,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
             },
           }}
         />
@@ -59,9 +64,10 @@ export function ResourceFilters({
           ]}
           styles={{
             input: {
-              background: "white",
-              borderColor: "oklch(0.9 0.01 255)",
-              minHeight: 44,
+              background: "oklch(0.995 0.012 230 / 0.92)",
+              borderColor: "oklch(0.9 0.03 230)",
+              minHeight: 48,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
             },
           }}
         />
@@ -79,9 +85,10 @@ export function ResourceFilters({
           ]}
           styles={{
             input: {
-              background: "white",
-              borderColor: "oklch(0.9 0.01 255)",
-              minHeight: 44,
+              background: "oklch(0.995 0.012 230 / 0.92)",
+              borderColor: "oklch(0.9 0.03 230)",
+              minHeight: 48,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
             },
           }}
         />

@@ -1,15 +1,19 @@
 export function BrandMark() {
   return (
     <div className="flex items-center gap-3">
-      <div className="grid h-10 w-10 place-items-center rounded-xl bg-[oklch(0.2_0.03_255)] text-[oklch(0.98_0.01_255)]">
-        <span className="font-heading text-sm font-bold">ES</span>
+      <div className="brand-mark-icon overflow-hidden">
+        <img
+          src="/logo.png"
+          alt="Logo"
+          className="h-full w-full object-cover"
+        />
       </div>
       <div>
-        <p className="font-heading text-lg font-bold tracking-tight text-[oklch(0.22_0.02_255)]">
-          ExamStack
+        <p className="font-heading text-lg font-bold tracking-tight text-[var(--color-ink-strong)]">
+          黑哥共享站
         </p>
-        <p className="text-xs text-[oklch(0.5_0.02_255)]">
-          期末资料管理台
+        <p className="text-xs text-[var(--color-ink-soft)]">
+          {/* 蓝天一样清爽的资料空间 */}
         </p>
       </div>
     </div>
