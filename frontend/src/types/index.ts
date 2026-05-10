@@ -42,6 +42,7 @@ export interface Resource {
   download_count: number;
   uploader_id: number;
   uploader_name: string;
+  uploader_avatar_url?: string | null;
   preview_url: string;
   download_url: string;
   created_at?: string;

@@ -14,6 +14,7 @@ class ResourceResponse(BaseModel):
     download_count: int
     uploader_id: int
     uploader_name: str
+    uploader_avatar_url: str | None = None
     preview_url: str
     download_url: str
     created_at: datetime | None = None

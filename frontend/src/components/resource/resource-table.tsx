@@ -1,12 +1,12 @@
 import { Select, TextInput } from "@mantine/core";
-import { Download, Eye, FileText, ImageIcon, NotebookTabs } from "lucide-react";
+import { Download, FileText, ImageIcon, NotebookTabs } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useEffect, useState } from "react";
 
 import type { Pagination, Resource } from "@/types";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatFileSize } from "@/utils/resource";
+import { formatDate, formatFileSize, resolveBackendUrl } from "@/utils/resource";
 import { buildPaginationItems, buildPaginationSummary } from "@/utils/pagination";
 
 function iconForType(type: string) {
@@ -26,6 +26,35 @@ interface ResourceTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   loading?: boolean;
   renderActions?: (resource: Resource) => ReactNode;
+}
+
+function getInitial(name: string) {
+  return (name.trim().slice(0, 1) || "U").toUpperCase();
+}
+
+function UploaderCell({ resource }: { resource: Resource }) {
+  const avatarSrc = resource.uploader_avatar_url
+    ? resolveBackendUrl(resource.uploader_avatar_url)
+    : "";
+
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#eff6ff] text-xs font-bold text-[#1d4ed8]">
+        {avatarSrc ? (
+          <img
+            src={avatarSrc}
+            alt={`${resource.uploader_name} 的头像`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          getInitial(resource.uploader_name)
+        )}
+      </div>
+      <span className="truncate text-sm font-medium text-[var(--color-ink)]">
+        {resource.uploader_name}
+      </span>
+    </div>
+  );
 }
 
 export function ResourceTable({
@@ -114,7 +143,7 @@ export function ResourceTable({
                 </div>
               </div>
 
-              <div className="text-sm text-[var(--color-ink)]">{resource.uploader_name}</div>
+              <UploaderCell resource={resource} />
 
               <div className="text-sm text-[var(--color-ink)]">
                 {formatFileSize(resource.file_size)} / {resource.download_count}
@@ -158,10 +187,7 @@ export function ResourceTable({
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[var(--color-ink)]">
-                <div className="flex items-center gap-2">
-                  <Eye size={14} />
-                  {resource.uploader_name}
-                </div>
+                <UploaderCell resource={resource} />
                 <div className="flex items-center gap-2">
                   <Download size={14} />
                   {resource.download_count} 次

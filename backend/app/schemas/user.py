@@ -33,6 +33,14 @@ class AdminUserListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class TopUploaderResponse(BaseModel):
+    id: int
+    username: str
+    avatar_url: str | None = None
+    points: int
+    uploaded_count: int
+
+
 class AdminUpdateUserPointsRequest(BaseModel):
     points: int = Field(ge=0, le=100000)
     reason: str = Field(default="admin_adjustment", min_length=2, max_length=120)

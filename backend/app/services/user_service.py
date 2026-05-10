@@ -20,6 +20,7 @@ from app.schemas.user import (
     AdminResetUserPasswordRequest,
     AdminUpdateUserProfileRequest,
     AdminUpdateUserPointsRequest,
+    TopUploaderResponse,
     UpdateProfileRequest,
 )
 
@@ -153,6 +154,27 @@ class UserService:
             items=[self.to_admin_response(user) for user in users],
             pagination=PaginationMeta(total=total, page=page, page_size=page_size),
         )
+
+    def list_top_uploaders(self, limit: int = 3) -> list[TopUploaderResponse]:
+        upload_count = func.count(Resource.id).label("uploaded_count")
+        statement = (
+            select(User, upload_count)
+            .join(Resource, Resource.uploader_id == User.id)
+            .group_by(User.id)
+            .order_by(upload_count.desc(), User.id.asc())
+            .limit(limit)
+        )
+        rows = self.db.execute(statement).all()
+        return [
+            TopUploaderResponse(
+                id=user.id,
+                username=user.username,
+                avatar_url=user.avatar_url,
+                points=user.points,
+                uploaded_count=int(count),
+            )
+            for user, count in rows
+        ]
 
     def get_admin_user(self, user_id: int) -> AdminUserResponse:
         user = self.get_by_id(user_id)

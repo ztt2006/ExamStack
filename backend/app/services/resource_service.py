@@ -337,6 +337,7 @@ class ResourceService:
             download_count=resource.download_count,
             uploader_id=resource.uploader_id,
             uploader_name=resource.uploader.username,
+            uploader_avatar_url=resource.uploader.avatar_url,
             preview_url=f"/api/v1/resources/{resource.id}/preview",
             download_url=f"/api/v1/resources/{resource.id}/file",
             created_at=resource.created_at,

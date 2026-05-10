@@ -75,6 +75,33 @@ def _register_and_login(client: TestClient) -> str:
     return response.json()["data"]["access_token"]
 
 
+def _register_and_login_as(client: TestClient, username: str, email: str) -> str:
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "Password123",
+            "school": "Test University",
+        },
+    )
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"account": email, "password": "Password123"},
+    )
+    return response.json()["data"]["access_token"]
+
+
+def _upload_text_resource(client: TestClient, token: str, filename: str) -> None:
+    response = client.post(
+        "/api/v1/resources",
+        data={"description": f"{filename} description"},
+        files={"file": (filename, b"content", "text/plain")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201
+
+
 def test_create_and_filter_resources(fake_cos_storage) -> None:
     client = TestClient(create_app())
     token = _register_and_login(client)
@@ -106,6 +133,7 @@ def test_create_and_filter_resources(fake_cos_storage) -> None:
     assert len(items) == 1
     assert items[0]["original_filename"] == "review-notes.txt"
     assert items[0]["description"] == "Binary trees and graphs"
+    assert "uploader_avatar_url" in items[0]
 
     detail_response = client.get(f"/api/v1/resources/{resource_id}")
     assert detail_response.status_code == 200
@@ -117,6 +145,30 @@ def test_create_and_filter_resources(fake_cos_storage) -> None:
     )
     assert my_uploads_response.status_code == 200
     assert my_uploads_response.json()["data"]["items"][0]["id"] == resource_id
+
+
+def test_top_uploaders_returns_first_three_ranked_by_upload_count(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    alice_token = _register_and_login_as(client, "alice", "alice@example.com")
+    bob_token = _register_and_login_as(client, "bob", "bob@example.com")
+    carol_token = _register_and_login_as(client, "carol", "carol@example.com")
+    dave_token = _register_and_login_as(client, "dave", "dave@example.com")
+
+    for index in range(3):
+        _upload_text_resource(client, alice_token, f"alice-{index}.txt")
+    for index in range(2):
+        _upload_text_resource(client, bob_token, f"bob-{index}.txt")
+    _upload_text_resource(client, carol_token, "carol.txt")
+    _upload_text_resource(client, dave_token, "dave.txt")
+
+    response = client.get("/api/v1/users/top-uploaders")
+
+    assert response.status_code == 200
+    items = response.json()["data"]
+    assert [item["username"] for item in items] == ["alice", "bob", "carol"]
+    assert [item["uploaded_count"] for item in items] == [3, 2, 1]
+    assert "avatar_url" in items[0]
+    assert "points" in items[0]
 
 
 def test_direct_upload_rejects_files_larger_than_50mb(fake_cos_storage) -> None:
