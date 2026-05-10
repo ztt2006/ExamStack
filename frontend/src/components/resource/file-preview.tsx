@@ -12,9 +12,10 @@ interface FilePreviewProps {
 
 export function FilePreview({ resource, onDownloaded }: FilePreviewProps) {
   const [previewLoading, setPreviewLoading] = useState(true);
+  const [previewErrorMessage, setPreviewErrorMessage] = useState("");
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [downloadErrorMessage, setDownloadErrorMessage] = useState("");
-  const previewUrl = resolveBackendUrl(resource.preview_url);
+  const previewUrl = `${resolveBackendUrl(resource.preview_url)}?v=${resource.id}-${resource.file_size}`;
   const isDocx =
     resource.mime_type ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
@@ -61,19 +62,37 @@ export function FilePreview({ resource, onDownloaded }: FilePreviewProps) {
             {downloadErrorMessage}
           </p>
         ) : null}
+        {previewErrorMessage ? (
+          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-red-600">{previewErrorMessage}</p>
+            <p className="mt-2 text-sm text-red-500">
+              可能是图片文件损坏、后端文件缺失，或浏览器无法解析该图片格式。
+            </p>
+            <div className="mt-4">{downloadButton}</div>
+          </div>
+        ) : null}
         {previewLoading ? (
           <div className="flex min-h-40 items-center justify-center gap-2 text-sm font-semibold text-[var(--color-ink-soft)]">
             <LoaderCircle size={16} className="animate-spin" />
             正在加载预览
           </div>
         ) : null}
-        <img
-          src={previewUrl}
-          alt={resource.original_filename}
-          loading="lazy"
-          onLoad={() => setPreviewLoading(false)}
-          className={`h-auto max-h-[68dvh] w-full rounded-lg object-contain ${previewLoading ? "hidden" : ""}`}
-        />
+        {!previewErrorMessage ? (
+          <img
+            src={previewUrl}
+            alt={resource.original_filename}
+            loading="eager"
+            onLoad={() => {
+              setPreviewLoading(false);
+              setPreviewErrorMessage("");
+            }}
+            onError={() => {
+              setPreviewLoading(false);
+              setPreviewErrorMessage("图片预览加载失败");
+            }}
+            className={`h-auto max-h-[68dvh] w-full rounded-lg object-contain ${previewLoading ? "hidden" : ""}`}
+          />
+        ) : null}
       </div>
     );
   }

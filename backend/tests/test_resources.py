@@ -552,6 +552,26 @@ def test_preview_prefers_resource_mime_type_when_cos_content_type_is_generic(fak
     assert preview_response.status_code == 200
     assert preview_response.headers["content-type"].startswith("application/pdf")
     assert "inline" in preview_response.headers.get("content-disposition", "").lower()
+
+
+def test_preview_image_returns_inline_image_response() -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_response = client.post(
+        "/api/v1/resources",
+        data={"description": "Preview PNG inline"},
+        files={"file": ("diagram.png", b"fake-png", "image/png")},
+        headers=headers,
+    )
+
+    resource_id = create_response.json()["data"]["id"]
+    preview_response = client.get(f"/api/v1/resources/{resource_id}/preview")
+
+    assert preview_response.status_code == 200
+    assert preview_response.headers["content-type"].startswith("image/png")
+    assert "inline" in preview_response.headers.get("content-disposition", "").lower()
     assert preview_response.headers["accept-ranges"] == "bytes"
 
 
