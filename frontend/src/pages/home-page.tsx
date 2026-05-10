@@ -5,8 +5,7 @@ import {
   ArrowRight,
   BookCopy,
   BookOpenText,
-  FolderKanban,
-  Search,
+  Medal,
   Sparkles,
   UploadCloud,
   UserRound,
@@ -14,9 +13,9 @@ import {
 import { Link } from "react-router";
 
 import { getResources } from "@/api/resources";
-import { getMyProfile } from "@/api/users";
+import { getMyProfile, getTopUploaders } from "@/api/users";
 import { useAuthStore } from "@/store/auth-store";
-import { formatDate, formatFileSize } from "@/utils/resource";
+import { formatDate, formatFileSize, resolveBackendUrl } from "@/utils/resource";
 
 const quickLinks = [
   {
@@ -45,14 +44,20 @@ const quickLinks = [
   },
 ];
 
+function getInitial(name: string) {
+  return (name.trim().slice(0, 1) || "U").toUpperCase();
+}
+
 export function HomePage() {
   const user = useAuthStore((state) => state.user);
   const resourcesRequest = useRequest(() => getResources({ page: 1, page_size: 6 }));
+  const topUploadersRequest = useRequest(getTopUploaders);
   const profileRequest = useRequest(getMyProfile, {
     ready: Boolean(user),
   });
 
   const resources = resourcesRequest.data?.items ?? [];
+  const topUploaders = topUploadersRequest.data ?? [];
   const totalResources = resourcesRequest.data?.pagination.total ?? 0;
   const profile = profileRequest.data;
   const overviewLoading = resourcesRequest.loading || (Boolean(user) && profileRequest.loading);
@@ -148,61 +153,87 @@ export function HomePage() {
         <div className="panel-card p-6">
           <div className="flex items-center gap-3">
             <div className="metric-icon h-11 w-11">
-              <FolderKanban size={20} />
+              <Medal size={20} />
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
-                Summary
+                Top Uploaders
               </p>
               <h2 className="font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
-                快速概览
+                上传者排行
               </h2>
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="metric-icon">
-                  <Search size={18} />
-                </div>
-                <div>
-                  <p className="metric-label">资料探索</p>
-                  <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-                    适合先快速浏览平台已有内容，再决定是否进入更细的管理页。
-                  </p>
-                </div>
-              </div>
+          {topUploadersRequest.loading ? (
+            <div className="mt-6 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+              <Loader size="sm" color="blue" />
+              正在读取上传排行
             </div>
+          ) : null}
 
-            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="metric-icon">
-                  <UploadCloud size={18} />
-                </div>
-                <div>
-                  <p className="metric-label">上传入口</p>
-                  <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-                    上传和维护资料已经集中放到“我的上传”，入口职责更清晰。
-                  </p>
-                </div>
-              </div>
-            </div>
+          {topUploadersRequest.error ? (
+            <Alert
+              icon={<AlertCircle size={16} />}
+              radius="md"
+              color="red"
+              title="上传排行加载失败"
+              className="mt-6"
+            >
+              请稍后刷新重试。
+            </Alert>
+          ) : null}
 
-            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="metric-icon">
-                  <BookOpenText size={18} />
+          {!topUploadersRequest.loading && !topUploadersRequest.error ? (
+            <div className="mt-6 space-y-3">
+              {topUploaders.map((uploader, index) => {
+                const avatarSrc = uploader.avatar_url ? resolveBackendUrl(uploader.avatar_url) : "";
+                return (
+                  <div
+                    key={uploader.id}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-xs font-bold text-[var(--admin-primary)]">
+                        {index + 1}
+                      </span>
+                      <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#eff6ff] text-sm font-bold text-[#1d4ed8]">
+                        {avatarSrc ? (
+                          <img
+                            src={avatarSrc}
+                            alt={`${uploader.username} 的头像`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          getInitial(uploader.username)
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-[var(--color-ink-strong)]">
+                          {uploader.username}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                          当前积分 {uploader.points}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-[var(--color-ink-strong)]">
+                        {uploader.uploaded_count}
+                      </p>
+                      <p className="text-xs text-[var(--color-ink-soft)]">份资料</p>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {topUploaders.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--admin-border)] px-4 py-10 text-center text-sm text-[var(--color-ink-soft)]">
+                  暂无上传者排行，上传第一份资料后这里会自动更新。
                 </div>
-                <div>
-                  <p className="metric-label">知识沉淀</p>
-                  <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-                    知识库入口已预留，后续可以逐步扩展内容组织和检索能力。
-                  </p>
-                </div>
-              </div>
+              ) : null}
             </div>
-          </div>
+          ) : null}
         </div>
 
         <div className="panel-card p-6">

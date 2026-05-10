@@ -4,6 +4,7 @@ import type {
   ProfileSummary,
   Resource,
   ResourceListPayload,
+  TopUploader,
   UpdateProfilePayload,
   UpdateMyResourcePayload,
   User,
@@ -11,6 +12,11 @@ import type {
 
 export async function getMyProfile() {
   const response = await apiClient.get<ApiResponse<ProfileSummary>>("/users/me/profile");
+  return response.data.data;
+}
+
+export async function getTopUploaders() {
+  const response = await apiClient.get<ApiResponse<TopUploader[]>>("/users/top-uploaders");
   return response.data.data;
 }
 

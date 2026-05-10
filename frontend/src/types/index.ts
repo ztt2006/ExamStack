@@ -63,6 +63,14 @@ export interface ProfileSummary {
   uploaded_count: number;
 }
 
+export interface TopUploader {
+  id: number;
+  username: string;
+  avatar_url?: string | null;
+  points: number;
+  uploaded_count: number;
+}
+
 export interface UpdateProfilePayload {
   username: string;
   email: string;

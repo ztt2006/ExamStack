@@ -13,6 +13,12 @@ from app.services.user_service import UserService
 router = APIRouter()
 
 
+@router.get("/top-uploaders")
+def top_uploaders(db: Session = Depends(get_db)):
+    payload = UserService(db).list_top_uploaders(limit=3)
+    return success_response([item.model_dump(mode="json") for item in payload])
+
+
 @router.get("/me/profile")
 def my_profile(
     current_user: User = Depends(get_current_user),
