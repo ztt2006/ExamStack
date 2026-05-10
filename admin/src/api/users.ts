@@ -1,5 +1,11 @@
 import { apiClient } from '@/api/client'
 import type {
+  AdminResetUserPasswordPayload,
+  AdminUpdateUserPayload,
+  AdminUpdateUserPointsPayload,
+  AdminUser,
+  AdminUserFilters,
+  AdminUserListPayload,
   ApiResponse,
   ProfileSummary,
   ResourceListPayload,
@@ -33,5 +39,38 @@ export async function getMyResources(filters: { keyword?: string; page?: number;
   const response = await apiClient.get<ApiResponse<ResourceListPayload>>('/users/me/resources', {
     params: filters,
   })
+  return response.data.data
+}
+
+export async function getAdminUsers(filters: AdminUserFilters = {}) {
+  const response = await apiClient.get<ApiResponse<AdminUserListPayload>>('/admin/users', {
+    params: filters,
+  })
+  return response.data.data
+}
+
+export async function getAdminUserDetail(userId: number) {
+  const response = await apiClient.get<ApiResponse<AdminUser>>(`/admin/users/${userId}`)
+  return response.data.data
+}
+
+export async function updateAdminUser(userId: number, payload: AdminUpdateUserPayload) {
+  const response = await apiClient.put<ApiResponse<AdminUser>>(`/admin/users/${userId}`, payload)
+  return response.data.data
+}
+
+export async function updateAdminUserPoints(userId: number, payload: AdminUpdateUserPointsPayload) {
+  const response = await apiClient.patch<ApiResponse<AdminUser>>(
+    `/admin/users/${userId}/points`,
+    payload,
+  )
+  return response.data.data
+}
+
+export async function resetAdminUserPassword(userId: number, payload: AdminResetUserPasswordPayload) {
+  const response = await apiClient.patch<ApiResponse<AdminUser>>(
+    `/admin/users/${userId}/password`,
+    payload,
+  )
   return response.data.data
 }

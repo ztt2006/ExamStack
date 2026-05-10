@@ -104,7 +104,7 @@ export function UploadPage() {
     <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
       <section className="space-y-4">
         <div className="panel-card hero-panel p-6">
-          <div className="section-badge">Upload Mission</div>
+          <div className="section-badge">Upload</div>
           <h1 className="section-title mt-3 text-[2.25rem]">
             把你手里的资料
             统一录入平台
@@ -152,7 +152,7 @@ export function UploadPage() {
             placeholder="例如：数据结构期末重点整理"
             value={title}
             onChange={(event) => setTitle(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             required
           />
           <Textarea
@@ -160,7 +160,7 @@ export function UploadPage() {
             placeholder="写一下内容范围、适合人群、是否包含答案或复习建议"
             value={description}
             onChange={(event) => setDescription(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             minRows={4}
             required
           />
@@ -186,7 +186,7 @@ export function UploadPage() {
                 value={subjectId}
                 onChange={(value) => setSubjectId(value ?? "")}
                 data={subjectOptions}
-                radius="xl"
+                radius="md"
                 searchable
                 nothingFoundMessage="没有可用科目，先新建一个"
                 disabled={subjectsRequest.loading}
@@ -201,7 +201,7 @@ export function UploadPage() {
               placeholder="例如：2026 Spring"
               value={term}
               onChange={(event) => setTerm(event.currentTarget.value)}
-              radius="xl"
+              radius="md"
               required
             />
           </div>
@@ -215,7 +215,7 @@ export function UploadPage() {
                 { value: "pdf", label: "试题 PDF" },
                 { value: "image", label: "图片资料" },
               ]}
-              radius="xl"
+              radius="md"
               required
             />
             <TextInput
@@ -223,7 +223,7 @@ export function UploadPage() {
               placeholder="例如：期末,重点,速背"
               value={tags}
               onChange={(event) => setTags(event.currentTarget.value)}
-              radius="xl"
+              radius="md"
             />
           </div>
           <FileInput
@@ -235,13 +235,13 @@ export function UploadPage() {
               setUploadProgress(null);
               setErrorMessage("");
             }}
-            radius="xl"
+            radius="md"
             leftSection={<FileUp size={16} />}
             clearable
             required
           />
           {file ? (
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-[var(--color-ink-strong)]">{file.name}</p>
@@ -257,7 +257,7 @@ export function UploadPage() {
           ) : null}
 
           {uploadProgress ? (
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-strong)]">
                   <Gauge size={16} />
@@ -297,7 +297,7 @@ export function UploadPage() {
         onClose={() => setSubjectModalOpened(false)}
         title="新建科目"
         centered
-        radius="xl"
+        radius="md"
       >
         <form
           className="grid gap-4"
@@ -306,7 +306,7 @@ export function UploadPage() {
             void createSubjectRequest.run();
           }}
         >
-          <div className="rounded-[1.1rem] border border-[oklch(0.91_0.03_228)] bg-[oklch(0.995_0.012_230/.95)] p-4">
+          <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
             <div className="flex items-start gap-3">
               <div className="metric-icon h-10 w-10">
                 <Shapes size={18} />
@@ -327,7 +327,7 @@ export function UploadPage() {
             placeholder="例如：数据结构"
             value={newSubjectName}
             onChange={(event) => setNewSubjectName(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             required
           />
           <TextInput
@@ -335,7 +335,7 @@ export function UploadPage() {
             placeholder="例如：CS202"
             value={newSubjectCode}
             onChange={(event) => setNewSubjectCode(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             required
           />
           <TextInput
@@ -343,7 +343,7 @@ export function UploadPage() {
             placeholder="例如：计算机"
             value={newSubjectCategory}
             onChange={(event) => setNewSubjectCategory(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             required
           />
           <Textarea
@@ -351,7 +351,7 @@ export function UploadPage() {
             placeholder="可选，补充这个科目的资料范围或说明"
             value={newSubjectDescription}
             onChange={(event) => setNewSubjectDescription(event.currentTarget.value)}
-            radius="xl"
+            radius="md"
             minRows={3}
           />
 

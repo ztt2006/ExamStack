@@ -42,11 +42,19 @@ const router = createRouter({
           },
         },
         {
+          path: 'user-management',
+          name: 'user-management',
+          component: () => import('@/views/users/UserManagementView.vue'),
+          meta: {
+            title: '用户管理',
+          },
+        },
+        {
           path: 'users',
-          name: 'users',
+          name: 'user-center',
           component: () => import('@/views/users/UserCenterView.vue'),
           meta: {
-            title: '用户画像',
+            title: '个人中心',
           },
         },
         {

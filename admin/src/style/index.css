@@ -247,6 +247,52 @@ textarea {
   gap: 12px;
 }
 
+.user-cell,
+.managed-user-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.managed-user-summary {
+  margin-bottom: 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-soft);
+  padding: 14px;
+}
+
+.managed-user-summary > div {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.managed-user-summary strong {
+  color: var(--admin-ink);
+  font-size: 17px;
+}
+
+.managed-user-summary span {
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-management-dialog {
+  min-height: 280px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .pagination-row {
   margin-top: 20px;
 }
@@ -380,6 +426,43 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.dashboard-user-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-soft);
+  padding: 12px;
+}
+
+.dashboard-user-item > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.dashboard-user-item strong {
+  overflow: hidden;
+  color: var(--admin-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-user-item span {
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subject-cloud {
@@ -638,7 +721,8 @@ textarea {
   .metric-grid,
   .metric-grid--three,
   .subject-list,
-  .capability-grid {
+  .capability-grid,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 

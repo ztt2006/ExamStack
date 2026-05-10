@@ -61,7 +61,7 @@ export function HomePage() {
     <div className="space-y-8">
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="panel-card hero-panel p-6 sm:p-8">
-          <div className="section-badge">Overview Hub</div>
+          <div className="section-badge">Overview</div>
           <h1 className="section-title mt-3 text-[2.5rem]">
             {user ? `欢迎回来，${user.username}` : "欢迎来到 ExamStack"}
           </h1>
@@ -161,7 +161,7 @@ export function HomePage() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-[oklch(0.995_0.012_232/.92)] px-4 py-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
               <div className="flex items-center gap-3">
                 <div className="metric-icon">
                   <Search size={18} />
@@ -175,7 +175,7 @@ export function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-[oklch(0.995_0.012_232/.92)] px-4 py-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
               <div className="flex items-center gap-3">
                 <div className="metric-icon">
                   <UploadCloud size={18} />
@@ -189,7 +189,7 @@ export function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-[oklch(0.995_0.012_232/.92)] px-4 py-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4">
               <div className="flex items-center gap-3">
                 <div className="metric-icon">
                   <BookOpenText size={18} />
@@ -238,7 +238,7 @@ export function HomePage() {
                 <Link
                   key={resource.id}
                   to={`/resources/${resource.id}`}
-                  className="block rounded-[1.25rem] border border-[oklch(0.9_0.03_230)] bg-[oklch(0.995_0.012_232/.9)] px-4 py-4 transition-colors hover:bg-white"
+                  className="block rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-4 transition-colors hover:bg-white"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -260,7 +260,7 @@ export function HomePage() {
               ))}
 
               {!resourcesRequest.loading && resources.length === 0 ? (
-                <div className="rounded-[1.25rem] border border-dashed border-[oklch(0.88_0.03_230)] px-4 py-10 text-center text-sm text-[var(--color-ink-soft)]">
+                <div className="rounded-lg border border-dashed border-[var(--admin-border)] px-4 py-10 text-center text-sm text-[var(--color-ink-soft)]">
                   目前还没有可展示的资料内容。
                 </div>
               ) : null}

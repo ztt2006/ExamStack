@@ -6,6 +6,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
+import { useState } from "react";
 
 import { getResourceDetail } from "@/api/resources";
 import { FilePreview } from "@/components/resource/file-preview";
@@ -13,9 +14,11 @@ import { formatDate, formatFileSize } from "@/utils/resource";
 
 export function ResourceDetailPage() {
   const { id = "" } = useParams();
+  const [downloadCountOverride, setDownloadCountOverride] = useState<number | null>(null);
 
   const detailRequest = useRequest(() => getResourceDetail(id), {
     refreshDeps: [id],
+    onSuccess: () => setDownloadCountOverride(null),
   });
 
   if (detailRequest.loading) {
@@ -39,7 +42,10 @@ export function ResourceDetailPage() {
     );
   }
 
-  const resource = detailRequest.data;
+  const resource = {
+    ...detailRequest.data,
+    download_count: downloadCountOverride ?? detailRequest.data.download_count,
+  };
 
   return (
     <div className="space-y-6">
@@ -60,6 +66,7 @@ export function ResourceDetailPage() {
             </span>
             <span>{formatFileSize(resource.file_size)}</span>
             <span>{resource.uploader_name}</span>
+            <span>下载 {resource.download_count} 次</span>
             <span>{formatDate(resource.created_at)}</span>
           </div>
           {resource.description ? (
@@ -67,7 +74,10 @@ export function ResourceDetailPage() {
           ) : null}
         </div>
 
-        <FilePreview resource={resource} />
+        <FilePreview
+          resource={resource}
+          onDownloaded={(nextResource) => setDownloadCountOverride(nextResource.download_count)}
+        />
       </section>
     </div>
   );

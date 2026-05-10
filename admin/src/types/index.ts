@@ -20,6 +20,37 @@ export interface User {
   created_at?: string | null
 }
 
+export interface AdminUser extends User {
+  uploaded_count: number
+  download_count: number
+}
+
+export interface AdminUserListPayload {
+  items: AdminUser[]
+  pagination: Pagination
+}
+
+export interface AdminUserFilters {
+  keyword?: string
+  page?: number
+  page_size?: number
+}
+
+export interface AdminUpdateUserPayload {
+  username: string
+  email: string
+  school: string
+}
+
+export interface AdminUpdateUserPointsPayload {
+  points: number
+  reason: string
+}
+
+export interface AdminResetUserPasswordPayload {
+  password: string
+}
+
 export interface AuthToken {
   access_token: string
   token_type?: string

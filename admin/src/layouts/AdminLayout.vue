@@ -28,7 +28,8 @@ const menuItems = [
   { index: '/dashboard', title: '工作台', icon: DataBoard },
   { index: '/resources', title: '资料管理', icon: Files },
   { index: '/subjects', title: '学科管理', icon: Collection },
-  { index: '/users', title: '用户画像', icon: User },
+  { index: '/user-management', title: '用户管理', icon: User },
+  { index: '/users', title: '个人中心', icon: User },
   { index: '/operations', title: '运营日志', icon: Operation },
   { index: '/settings', title: '系统设置', icon: Setting },
 ]

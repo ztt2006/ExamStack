@@ -9,12 +9,10 @@ export function BrandMark() {
         />
       </div>
       <div>
-        <p className="font-heading text-lg font-bold tracking-tight text-[var(--color-ink-strong)]">
+        <p className="text-lg font-bold text-[var(--color-ink-strong)] group-[.dark-brand]:text-white">
           黑哥共享站
         </p>
-        <p className="text-xs text-[var(--color-ink-soft)]">
-          {/* 蓝天一样清爽的资料空间 */}
-        </p>
+        <p className="text-xs text-[var(--color-ink-soft)] group-[.dark-brand]:text-[#b8c4d6]">资料共享前台</p>
       </div>
     </div>
   );

@@ -4,10 +4,10 @@ import { computed, onMounted, ref } from 'vue'
 
 import { getResources } from '@/api/resources'
 import { getSubjects } from '@/api/subjects'
-import { getMyProfile } from '@/api/users'
+import { getAdminUsers, getMyProfile } from '@/api/users'
 import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
-import type { ProfileSummary, Resource, Subject } from '@/types'
+import type { AdminUser, ProfileSummary, Resource, Subject } from '@/types'
 import { formatFileSize, formatShortDate, percent } from '@/utils/format'
 
 const loading = ref(false)
@@ -15,6 +15,9 @@ const resources = ref<Resource[]>([])
 const totalResources = ref(0)
 const subjects = ref<Subject[]>([])
 const profile = ref<ProfileSummary | null>(null)
+const users = ref<AdminUser[]>([])
+const totalUsers = ref(0)
+const errors = ref<string[]>([])
 
 const totalDownloads = computed(() =>
   resources.value.reduce((total, resource) => total + resource.download_count, 0),
@@ -23,19 +26,55 @@ const totalFileSize = computed(() =>
   resources.value.reduce((total, resource) => total + resource.file_size, 0),
 )
 const activeResource = computed(() => resources.value[0])
+const topUsers = computed(() =>
+  [...users.value]
+    .sort((left, right) => right.uploaded_count - left.uploaded_count || right.points - left.points)
+    .slice(0, 5),
+)
+const totalUploads = computed(() => users.value.reduce((total, user) => total + user.uploaded_count, 0))
 
 async function loadDashboard() {
   loading.value = true
+  errors.value = []
   try {
-    const [resourcePayload, subjectPayload, profilePayload] = await Promise.all([
+    const [resourceResult, subjectResult, profileResult, userResult] = await Promise.allSettled([
       getResources({ page: 1, page_size: 8 }),
       getSubjects(),
       getMyProfile(),
+      getAdminUsers({ page: 1, page_size: 8 }),
     ])
-    resources.value = resourcePayload.items
-    totalResources.value = resourcePayload.pagination.total
-    subjects.value = subjectPayload
-    profile.value = profilePayload
+
+    if (resourceResult.status === 'fulfilled') {
+      resources.value = resourceResult.value.items
+      totalResources.value = resourceResult.value.pagination.total
+    } else {
+      resources.value = []
+      totalResources.value = 0
+      errors.value.push('资源数据加载失败')
+    }
+
+    if (subjectResult.status === 'fulfilled') {
+      subjects.value = subjectResult.value
+    } else {
+      subjects.value = []
+      errors.value.push('学科数据加载失败')
+    }
+
+    if (profileResult.status === 'fulfilled') {
+      profile.value = profileResult.value
+    } else {
+      profile.value = null
+      errors.value.push('个人账户数据加载失败')
+    }
+
+    if (userResult.status === 'fulfilled') {
+      users.value = userResult.value.items
+      totalUsers.value = userResult.value.pagination.total
+    } else {
+      users.value = []
+      totalUsers.value = 0
+      errors.value.push('用户数据加载失败')
+    }
   } finally {
     loading.value = false
   }
@@ -52,15 +91,24 @@ onMounted(loadDashboard)
       </template>
     </PageHeader>
 
+    <el-alert
+      v-if="errors.length"
+      type="warning"
+      show-icon
+      :closable="false"
+      title="部分工作台数据加载失败"
+      :description="errors.join('、')"
+    />
+
     <section class="metric-grid">
       <MetricCard label="资源总量" :value="totalResources" hint="平台资料库" :icon="Files" tone="blue" />
-      <MetricCard label="学科分类" :value="subjects.length" hint="可用于资源归类" :icon="Collection" tone="green" />
+      <MetricCard label="用户总数" :value="totalUsers" hint="平台注册用户" :icon="User" tone="green" />
       <MetricCard label="下载次数" :value="totalDownloads" hint="当前页资源累计" :icon="TrendCharts" tone="amber" />
       <MetricCard
-        label="我的积分"
-        :value="profile?.points ?? '-'"
-        :hint="`${profile?.uploaded_count ?? 0} 份个人上传`"
-        :icon="User"
+        label="学科分类"
+        :value="subjects.length"
+        :hint="`当前页 ${totalUploads} 份用户上传`"
+        :icon="Collection"
         tone="rose"
       />
     </section>
@@ -133,6 +181,25 @@ onMounted(loadDashboard)
           <p class="mt-4 text-sm text-slate-500">
             最近更新：{{ formatShortDate(activeResource?.created_at) }}
           </p>
+        </el-card>
+
+        <el-card class="admin-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>活跃用户</span>
+              <el-tag round>{{ totalUsers }} 人</el-tag>
+            </div>
+          </template>
+          <div class="dashboard-user-list">
+            <div v-for="userItem in topUsers" :key="userItem.id" class="dashboard-user-item">
+              <div>
+                <strong>{{ userItem.username }}</strong>
+                <span>{{ userItem.school }}</span>
+              </div>
+              <el-tag type="info" effect="plain">{{ userItem.uploaded_count }} 上传</el-tag>
+            </div>
+          </div>
+          <el-empty v-if="!topUsers.length" description="暂无用户数据" />
         </el-card>
       </div>
     </section>

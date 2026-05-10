@@ -187,7 +187,7 @@ export function ProfilePage() {
       <section className="panel-card p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+            <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
               My Uploads
             </p>
             <h2 className="section-title mt-2">我的上传</h2>
@@ -298,7 +298,7 @@ export function ProfilePage() {
         onClose={() => setUploadOpened(false)}
         title={
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+            <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
               Resumable Upload
             </p>
             <h2 className="mt-1 font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
@@ -307,15 +307,15 @@ export function ProfilePage() {
           </div>
         }
         centered
-        radius="xl"
+        radius="md"
         size="lg"
         padding={0}
-        overlayProps={{ opacity: 0.36, blur: 2 }}
+        overlayProps={{ opacity: 0.36, blur: 0 }}
         classNames={{
-          content: "overflow-hidden border border-white/70 bg-[oklch(0.985_0.012_232)] shadow-[0_28px_80px_oklch(0.55_0.06_230/.18)]",
-          header: "border-b border-[oklch(0.9_0.03_230)] bg-[linear-gradient(180deg,oklch(1_0.002_230),oklch(0.975_0.018_226))] px-6 py-5",
-          body: "bg-[linear-gradient(180deg,oklch(0.995_0.01_232),oklch(0.975_0.018_228))]",
-          close: "rounded-full text-[var(--color-ink-soft)] hover:bg-white/80",
+          content: "overflow-hidden border border-[var(--admin-border)] bg-white",
+          header: "border-b border-[var(--admin-border)] bg-white px-6 py-5",
+          body: "bg-white",
+          close: "rounded-lg text-[var(--color-ink-soft)] hover:bg-[var(--admin-soft)]",
         }}
       >
         <form
@@ -325,7 +325,7 @@ export function ProfilePage() {
             void uploadRequest.run();
           }}
         >
-          <div className="rounded-[1.25rem] border border-[oklch(0.9_0.03_230)] bg-white/75 p-4 shadow-[inset_0_1px_0_white]">
+          <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
             <div className="flex items-start gap-3">
               <div className="metric-icon h-11 w-11 shrink-0">
                 <FileUp size={20} />
@@ -342,18 +342,18 @@ export function ProfilePage() {
           </div>
 
           <div className="grid gap-3">
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
               <Textarea
                 label="资料说明"
                 placeholder="写一句清楚的描述，方便后续搜索和辨认"
                 value={uploadDescription}
                 onChange={(event) => setUploadDescription(event.currentTarget.value)}
-                radius="xl"
+                radius="md"
                 minRows={4}
                 required
               />
             </div>
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
               <FileInput
                 label="上传文件"
                 placeholder="选择一个文档、PDF 或图片"
@@ -363,14 +363,14 @@ export function ProfilePage() {
                   setUploadProgress(null);
                   setUploadErrorMessage("");
                 }}
-                radius="xl"
+                radius="md"
                 leftSection={<UploadCloud size={16} />}
                 clearable
                 required
               />
 
               {uploadFile ? (
-                <div className="mt-3 rounded-[1rem] border border-[oklch(0.91_0.03_228)] bg-[oklch(0.995_0.012_230/.92)] p-3">
+                <div className="mt-3 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[var(--color-ink-strong)]">
@@ -380,7 +380,7 @@ export function ProfilePage() {
                         {formatFileSize(uploadFile.size)} · {selectedUploadUsesChunks ? "分片断点续传" : "普通上传"}
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[oklch(0.88_0.04_224)] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[var(--color-sky-strong)]">
+                    <span className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                       {selectedUploadUsesChunks ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
                       {selectedUploadUsesChunks ? "可续传" : "快速提交"}
                     </span>
@@ -391,7 +391,7 @@ export function ProfilePage() {
           </div>
 
           {uploadProgress ? (
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/75 p-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-strong)]">
                   <Gauge size={16} />
@@ -468,7 +468,7 @@ export function ProfilePage() {
           />
 
           {selectedResource ? (
-            <div className="rounded-[1rem] border border-[oklch(0.9_0.03_230)] bg-[oklch(0.995_0.012_232/.92)] px-4 py-3 text-sm text-[var(--color-ink-soft)]">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)]">
               当前文件：{selectedResource.original_filename}
             </div>
           ) : null}

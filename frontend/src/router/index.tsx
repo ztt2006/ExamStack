@@ -11,6 +11,7 @@ import { NotFoundPage } from "@/pages/not-found-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { RegisterPage } from "@/pages/register-page";
 import { ResourceDetailPage } from "@/pages/resource-detail-page";
+import { UploadPage } from "@/pages/upload-page";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
           {
             path: "my-uploads",
             element: <ProfilePage />,
+          },
+          {
+            path: "upload",
+            element: <UploadPage />,
           },
         ],
       },

@@ -52,3 +52,11 @@ def test_upload_and_download_document() -> None:
     assert download_response.status_code == 200
     download_payload = download_response.json()["data"]
     assert download_payload["download_url"].endswith(f"/api/v1/resources/{resource_id}/file")
+
+    detail_response = client.get(f"/api/v1/resources/{resource_id}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["data"]["download_count"] == 1
+
+    list_response = client.get("/api/v1/resources")
+    assert list_response.status_code == 200
+    assert list_response.json()["data"]["items"][0]["download_count"] == 1

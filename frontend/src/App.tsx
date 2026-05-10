@@ -9,31 +9,31 @@ import { router } from "@/router";
 import { useAuthStore } from "@/store/auth-store";
 
 const theme = createTheme({
-  primaryColor: "sky",
+  primaryColor: "blue",
   colors: {
-    sky: [
-      "#eef8ff",
-      "#dff1ff",
-      "#c3e6ff",
-      "#9ad5ff",
-      "#73c3ff",
-      "#4db0f7",
-      "#3399de",
-      "#2679af",
-      "#215f89",
-      "#1f526f",
+    blue: [
+      "#eff6ff",
+      "#dbeafe",
+      "#bfdbfe",
+      "#93c5fd",
+      "#60a5fa",
+      "#3b82f6",
+      "#2563eb",
+      "#1d4ed8",
+      "#1e40af",
+      "#1e3a8a",
     ],
   },
-  fontFamily: "Geist Variable, sans-serif",
+  fontFamily: 'Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
   headings: {
-    fontFamily: '"Manrope", "Geist Variable", sans-serif',
+    fontFamily: 'Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
   },
   radius: {
-    sm: "14px",
-    md: "20px",
-    xl: "30px",
+    sm: "6px",
+    md: "8px",
+    xl: "8px",
   },
-  defaultRadius: "xl",
+  defaultRadius: "md",
 });
 
 function AppBootstrap() {

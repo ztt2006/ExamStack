@@ -6,6 +6,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { BrandMark } from "@/components/common/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
+import { resolveBackendUrl } from "@/utils/resource";
 
 const navItems = [
   { to: "/", label: "总览", icon: LayoutDashboard },
@@ -15,7 +16,7 @@ const navItems = [
   { to: "/my-uploads", label: "我的上传", icon: UploadCloud },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, tone = "light" }: { onNavigate?: () => void; tone?: "dark" | "light" }) {
   return (
     <nav className="flex flex-col gap-1.5">
       {navItems.map((item) => (
@@ -25,10 +26,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             [
-              "flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex h-12 items-center justify-between rounded-lg px-3 text-sm font-medium transition-colors",
               isActive
-                ? "bg-[linear-gradient(135deg,oklch(0.74_0.11_218),oklch(0.65_0.13_236))] text-white shadow-[0_14px_28px_oklch(0.66_0.08_230/.18)]"
-                : "text-[var(--color-ink-soft)] hover:bg-white/80 hover:text-[var(--color-ink-strong)]",
+                ? "bg-[#2563eb] text-white"
+                : tone === "dark"
+                  ? "text-[#c9d5e7] hover:bg-white/10 hover:text-white"
+                  : "text-[var(--admin-muted)] hover:bg-[var(--admin-soft)] hover:text-[var(--admin-ink)]",
             ].join(" ")
           }
         >
@@ -61,6 +64,24 @@ const routeMeta: Record<string, { title: string }> = {
   },
 };
 
+function getUserInitial(username?: string) {
+  return (username?.trim().slice(0, 1) || "U").toUpperCase();
+}
+
+function UserAvatar({ user }: { user: NonNullable<ReturnType<typeof useAuthStore.getState>["user"]> }) {
+  const avatarSrc = user.avatar_url ? resolveBackendUrl(user.avatar_url) : "";
+
+  return (
+    <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#eff6ff] text-sm font-bold text-[#1d4ed8]">
+      {avatarSrc ? (
+        <img src={avatarSrc} alt={`${user.username} 的头像`} className="h-full w-full object-cover" />
+      ) : (
+        getUserInitial(user.username)
+      )}
+    </div>
+  );
+}
+
 export function AppLayout() {
   const [opened, setOpened] = useState(false);
   const location = useLocation();
@@ -76,35 +97,34 @@ export function AppLayout() {
         });
 
   return (
-    <div className="sky-shell min-h-dvh text-[var(--color-ink)]">
-      <div className="relative z-10 flex min-h-dvh">
-        <aside className="hidden w-[296px] shrink-0 border-r border-white/40 bg-[oklch(0.985_0.012_232/.7)] lg:flex lg:flex-col lg:backdrop-blur-xl">
-          <div className="border-b border-white/50 px-6 py-6">
+    <div className="min-h-dvh text-[var(--color-ink)]">
+      <div className="flex min-h-dvh">
+        <aside className="hidden w-[248px] shrink-0 border-r border-[var(--admin-border)] bg-white text-[var(--admin-ink)] lg:flex lg:flex-col">
+          <div className="flex h-[72px] items-center border-b border-[var(--admin-border)] px-5">
             <Link to="/">
               <BrandMark />
             </Link>
           </div>
 
-          <div className="flex-1 px-4 py-6">
-            <NavLinks />
+          <div className="flex-1 px-3 py-5">
+            <NavLinks tone="light" />
           </div>
 
-          <div className="border-t border-white/50 p-4">
+          <div className="border-t border-[var(--admin-border)] p-4">
             {token && user ? (
-              <div className="sidebar-card">
+              <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
                 <div className="flex items-center gap-3">
-                  <div className="metric-icon">
-                    <UserRound size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--color-ink-strong)]">{user.username}</p>
-                    <p className="text-xs text-[var(--color-ink-soft)]">{user.email}</p>
+                  <UserAvatar user={user} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--admin-ink)]">{user.username}</p>
+                    <p className="truncate text-xs text-[var(--admin-muted)]">{user.email}</p>
                   </div>
                 </div>
+                <div className="my-3 h-px bg-[var(--admin-border)]" />
                 <button
                   type="button"
                   onClick={logout}
-                  className="admin-secondary-btn mt-4 inline-flex w-full items-center justify-center gap-2"
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-transparent text-sm font-medium text-[var(--admin-muted)] transition-colors hover:border-red-100 hover:bg-red-50 hover:text-red-600"
                 >
                   <LogOut size={15} />
                   退出登录
@@ -124,20 +144,25 @@ export function AppLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-white/45 bg-[oklch(0.985_0.012_232/.64)] backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 border-b border-[var(--admin-border)] bg-white/90 backdrop-blur">
+            <div className="flex min-h-[72px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full bg-white/70 lg:hidden"
+                  className="bg-white lg:hidden"
                   onClick={() => setOpened(true)}
                   aria-label="打开导航"
                 >
                   <Menu />
                 </Button>
                 <div className="min-w-0">
-                  <h1 className="truncate font-heading text-2xl font-bold text-[var(--color-ink-strong)]">
+                  <div className="hidden items-center gap-2 text-sm text-[var(--admin-muted)] sm:flex">
+                    <span>前台</span>
+                    <ChevronRight size={14} />
+                    <span>{currentMeta.title}</span>
+                  </div>
+                  <h1 className="truncate text-2xl font-bold text-[var(--color-ink-strong)]">
                     {currentMeta.title}
                   </h1>
                 </div>
@@ -171,31 +196,30 @@ export function AppLayout() {
           position="left"
           size="82%"
           padding="md"
-          radius="xl"
-          overlayProps={{ opacity: 0.35, blur: 1 }}
+          radius="md"
+          overlayProps={{ opacity: 0.35, blur: 0 }}
           title={<BrandMark />}
         >
           <div className="flex h-full flex-col gap-6">
-            <NavLinks onNavigate={() => setOpened(false)} />
+            <NavLinks tone="light" onNavigate={() => setOpened(false)} />
             <div className="sidebar-card">
               {token && user ? (
                 <>
                   <div className="flex items-center gap-3">
-                    <div className="metric-icon">
-                      <UserRound size={18} />
-                    </div>
-                    <div>
+                    <UserAvatar user={user} />
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--color-ink-strong)]">{user.username}</p>
                       <p className="text-xs text-[var(--color-ink-soft)]">{user.email}</p>
                     </div>
                   </div>
+                  <div className="my-3 h-px bg-[var(--admin-border)]" />
                   <button
                     type="button"
                     onClick={() => {
                       logout();
                       setOpened(false);
                     }}
-                    className="admin-secondary-btn mt-4 inline-flex w-full items-center justify-center gap-2"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-transparent text-sm font-medium text-[var(--admin-muted)] transition-colors hover:border-red-100 hover:bg-red-50 hover:text-red-600"
                   >
                     <LogOut size={15} />
                     退出登录

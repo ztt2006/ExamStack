@@ -40,9 +40,9 @@ const pointToneLabels: Record<ProfilePointTone, string> = {
 };
 
 const pointToneClasses: Record<ProfilePointTone, string> = {
-  "needs-work": "border-[oklch(0.9_0.06_88)] bg-[oklch(0.99_0.035_90/.85)] text-[oklch(0.48_0.09_78)]",
-  steady: "border-[oklch(0.86_0.05_226)] bg-[oklch(0.965_0.03_225/.86)] text-[var(--color-sky-strong)]",
-  excellent: "border-[oklch(0.84_0.07_154)] bg-[oklch(0.965_0.04_154/.86)] text-[oklch(0.43_0.1_154)]",
+  "needs-work": "border-amber-200 bg-amber-50 text-amber-700",
+  steady: "border-blue-200 bg-blue-50 text-blue-700",
+  excellent: "border-green-200 bg-green-50 text-green-700",
 };
 
 function getInitials(username: string) {
@@ -205,7 +205,7 @@ export function AccountPage() {
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="panel-card hero-panel p-6 sm:p-8">
           <div className="relative z-10 grid gap-6 md:grid-cols-[auto_1fr] md:items-center">
-            <div className="relative h-32 w-32 overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(160deg,oklch(0.78_0.09_212),oklch(0.62_0.13_236))] shadow-[0_22px_50px_oklch(0.63_0.08_230/.22)]">
+            <div className="relative h-32 w-32 overflow-hidden rounded-lg border border-[var(--admin-border)] bg-[#2563eb]">
               {avatarSrc ? (
                 <img
                   src={avatarSrc}
@@ -217,13 +217,13 @@ export function AccountPage() {
                   {initials}
                 </div>
               )}
-              <div className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full border border-white/70 bg-white/90 text-[var(--color-sky-strong)] shadow-sm">
+              <div className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-lg border border-[var(--admin-border)] bg-white text-[var(--admin-primary)]">
                 <Camera size={18} />
               </div>
             </div>
 
             <div className="min-w-0">
-              <div className="section-badge">Profile Hub</div>
+              <div className="section-badge">Profile</div>
               <h1 className="section-title mt-3 text-[clamp(2rem,4vw,3.05rem)]">
                 {profile.username}
               </h1>
@@ -236,7 +236,7 @@ export function AccountPage() {
                   <Pencil />
                   编辑资料
                 </Button>
-                <Link to="/profile" className="admin-primary-btn inline-flex items-center gap-2">
+                <Link to="/my-uploads" className="admin-primary-btn inline-flex items-center gap-2">
                   <UploadCloud size={16} />
                   管理上传
                 </Link>
@@ -245,7 +245,7 @@ export function AccountPage() {
           </div>
 
           <form
-            className="relative z-10 mt-7 grid gap-3 rounded-[1.2rem] border border-[oklch(0.9_0.03_230)] bg-white/65 p-4 sm:grid-cols-[1fr_auto] sm:items-end"
+            className="relative z-10 mt-7 grid gap-3 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4 sm:grid-cols-[1fr_auto] sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
               void avatarUploadRequest.run();
@@ -260,7 +260,7 @@ export function AccountPage() {
                 setAvatarErrorMessage("");
               }}
               accept="image/png,image/jpeg,image/webp,image/gif"
-              radius="xl"
+              radius="md"
               clearable
               leftSection={<ImageUp size={16} />}
             />
@@ -301,7 +301,7 @@ export function AccountPage() {
                   <Medal size={20} />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+                  <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
                     Contribution
                   </p>
                   <h2 className="font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
@@ -309,7 +309,7 @@ export function AccountPage() {
                   </h2>
                 </div>
               </div>
-              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${pointToneClasses[pointSummary.tone]}`}>
+              <span className={`rounded-lg border px-3 py-1 text-xs font-bold ${pointToneClasses[pointSummary.tone]}`}>
                 {pointToneLabels[pointSummary.tone]}
               </span>
             </div>
@@ -322,9 +322,9 @@ export function AccountPage() {
               <p className="page-copy mt-3">{pointSummary.caption}</p>
             </div>
 
-            <div className="mt-6 h-3 overflow-hidden rounded-full bg-[oklch(0.93_0.02_232)]">
+            <div className="mt-6 h-3 overflow-hidden rounded-lg bg-[#eef2f7]">
               <div
-                className="h-full rounded-full bg-[linear-gradient(135deg,oklch(0.74_0.11_218),oklch(0.65_0.13_236))]"
+                className="h-full rounded-lg bg-[#2563eb]"
                 style={{ width: `${progressValue}%` }}
               />
             </div>
@@ -362,7 +362,7 @@ export function AccountPage() {
       <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="panel-card p-6">
           <div className="relative z-10">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+            <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
               Account Snapshot
             </p>
             <h2 className="section-title mt-2">当前账号信息</h2>
@@ -392,7 +392,7 @@ export function AccountPage() {
                 <BookOpenCheck size={20} />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+                <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
                   Next Steps
                 </p>
                 <h2 className="font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
@@ -430,8 +430,8 @@ export function AccountPage() {
         onClose={() => setProfileEditOpened(false)}
         title={
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
-              Profile Settings
+            <p className="text-xs font-bold uppercase text-[var(--admin-primary)]">
+              Profile
             </p>
             <h2 className="mt-1 font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
               编辑个人资料
@@ -439,15 +439,15 @@ export function AccountPage() {
           </div>
         }
         centered
-        radius="xl"
+        radius="md"
         size="lg"
         padding={0}
-        overlayProps={{ opacity: 0.36, blur: 2 }}
+        overlayProps={{ opacity: 0.36, blur: 0 }}
         classNames={{
-          content: "overflow-hidden border border-white/70 bg-[oklch(0.985_0.012_232)] shadow-[0_28px_80px_oklch(0.55_0.06_230/.18)]",
-          header: "border-b border-[oklch(0.9_0.03_230)] bg-[linear-gradient(180deg,oklch(1_0.002_230),oklch(0.975_0.018_226))] px-6 py-5",
-          body: "bg-[linear-gradient(180deg,oklch(0.995_0.01_232),oklch(0.975_0.018_228))]",
-          close: "rounded-full text-[var(--color-ink-soft)] hover:bg-white/80",
+          content: "overflow-hidden border border-[var(--admin-border)] bg-white",
+          header: "border-b border-[var(--admin-border)] bg-white px-6 py-5",
+          body: "bg-white",
+          close: "rounded-lg text-[var(--color-ink-soft)] hover:bg-[var(--admin-soft)]",
         }}
       >
         <form
@@ -457,9 +457,9 @@ export function AccountPage() {
             void profileUpdateRequest.run();
           }}
         >
-          <div className="rounded-[1.3rem] border border-[oklch(0.9_0.03_230)] bg-white/75 p-4 shadow-[inset_0_1px_0_white]">
+          <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] p-4">
             <div className="flex items-center gap-4">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.2rem] border border-white bg-[linear-gradient(160deg,oklch(0.78_0.09_212),oklch(0.62_0.13_236))] shadow-sm">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--admin-border)] bg-[#2563eb]">
                 {avatarSrc ? (
                   <img
                     src={avatarSrc}
@@ -484,7 +484,7 @@ export function AccountPage() {
           </div>
 
           <div className="grid gap-3">
-            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
               <TextInput
                 label="用户名"
                 value={profileUsername}
@@ -504,7 +504,7 @@ export function AccountPage() {
                     username: validateUsername(profileUsername),
                   }))
                 }
-                radius="xl"
+                radius="md"
                 size="md"
                 leftSection={<BadgeCheck size={16} />}
                 error={profileFieldErrors.username}
@@ -515,7 +515,7 @@ export function AccountPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+              <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
                 <TextInput
                   label="邮箱"
                   type="email"
@@ -536,7 +536,7 @@ export function AccountPage() {
                       email: validateEmail(profileEmail),
                     }))
                   }
-                  radius="xl"
+                  radius="md"
                   size="md"
                   leftSection={<Mail size={16} />}
                   error={profileFieldErrors.email}
@@ -545,7 +545,7 @@ export function AccountPage() {
                 />
               </div>
 
-              <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+              <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
                 <TextInput
                   label="学校"
                   value={profileSchool}
@@ -565,7 +565,7 @@ export function AccountPage() {
                       school: validateSchool(profileSchool),
                     }))
                   }
-                  radius="xl"
+                  radius="md"
                   size="md"
                   leftSection={<School size={16} />}
                   error={profileFieldErrors.school}
