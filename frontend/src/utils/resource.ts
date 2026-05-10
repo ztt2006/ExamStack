@@ -1,5 +1,6 @@
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL?.trim() || "http://127.0.0.1:8000/api/v1";
+const staticBaseUrl = import.meta.env.VITE_STATIC_BASE_URL?.trim() || "";
 
 export function getApiBaseUrl() {
   return apiBaseUrl;
@@ -9,7 +10,7 @@ export function resolveBackendUrl(path: string) {
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
-  const origin = new URL(apiBaseUrl).origin;
+  const origin = new URL(path.startsWith("/static/") && staticBaseUrl ? staticBaseUrl : apiBaseUrl).origin;
   return new URL(path, origin).toString();
 }
 
