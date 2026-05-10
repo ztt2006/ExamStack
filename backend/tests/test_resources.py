@@ -100,6 +100,118 @@ def test_create_and_filter_resources(fake_cos_storage) -> None:
     assert my_uploads_response.json()["data"]["items"][0]["id"] == resource_id
 
 
+def test_user_can_update_and_delete_own_resource(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sample_path = Path(__file__).resolve()
+    with sample_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/api/v1/resources",
+            data={"description": "Original description"},
+            files={"file": ("notes.txt", file_obj, "text/plain")},
+            headers=headers,
+        )
+
+    resource_id = create_response.json()["data"]["id"]
+    original_object_key = next(iter(fake_cos_storage))
+
+    update_response = client.put(
+        f"/api/v1/users/me/resources/{resource_id}",
+        data={"description": "Updated description"},
+        headers=headers,
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["data"]["description"] == "Updated description"
+    assert next(iter(fake_cos_storage)) == original_object_key
+
+    with sample_path.open("rb") as file_obj:
+        replace_response = client.put(
+            f"/api/v1/users/me/resources/{resource_id}",
+            data={"description": "Updated with replacement"},
+            files={"file": ("replacement.pdf", file_obj, "application/pdf")},
+            headers=headers,
+        )
+
+    assert replace_response.status_code == 200
+    payload = replace_response.json()["data"]
+    assert payload["description"] == "Updated with replacement"
+    assert payload["original_filename"] == "replacement.pdf"
+    assert payload["mime_type"] == "application/pdf"
+    assert original_object_key not in fake_cos_storage
+    assert len(fake_cos_storage) == 1
+
+    get_response = client.get(f"/api/v1/users/me/resources/{resource_id}", headers=headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["data"]["id"] == resource_id
+
+    delete_response = client.delete(f"/api/v1/users/me/resources/{resource_id}", headers=headers)
+    assert delete_response.status_code == 200
+    assert delete_response.json()["data"]["id"] == resource_id
+    assert fake_cos_storage == {}
+
+    detail_after_delete = client.get(f"/api/v1/resources/{resource_id}")
+    assert detail_after_delete.status_code == 404
+    assert detail_after_delete.json()["message"] == "resource not found"
+
+
+def test_user_cannot_manage_other_users_resources(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+
+    owner_token = _register_and_login(client)
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "viewer",
+            "email": "viewer@example.com",
+            "password": "Password123",
+            "school": "Test University",
+        },
+    )
+    viewer_login = client.post(
+        "/api/v1/auth/login",
+        json={"account": "viewer@example.com", "password": "Password123"},
+    )
+    viewer_headers = {"Authorization": f"Bearer {viewer_login.json()['data']['access_token']}"}
+
+    sample_path = Path(__file__).resolve()
+    with sample_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/api/v1/resources",
+            data={"description": "Private owner upload"},
+            files={"file": ("owner.txt", file_obj, "text/plain")},
+            headers=owner_headers,
+        )
+
+    resource_id = create_response.json()["data"]["id"]
+
+    detail_response = client.get(
+        f"/api/v1/users/me/resources/{resource_id}",
+        headers=viewer_headers,
+    )
+    assert detail_response.status_code == 404
+    assert detail_response.json()["message"] == "resource not found"
+
+    update_response = client.put(
+        f"/api/v1/users/me/resources/{resource_id}",
+        data={"description": "Hacked"},
+        headers=viewer_headers,
+    )
+    assert update_response.status_code == 404
+    assert update_response.json()["message"] == "resource not found"
+
+    delete_response = client.delete(
+        f"/api/v1/users/me/resources/{resource_id}",
+        headers=viewer_headers,
+    )
+    assert delete_response.status_code == 404
+    assert delete_response.json()["message"] == "resource not found"
+
+
 def test_preview_pdf_is_inline() -> None:
     client = TestClient(create_app())
     token = _register_and_login(client)

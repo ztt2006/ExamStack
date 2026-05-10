@@ -60,6 +60,12 @@ export interface ProfileSummary {
   uploaded_count: number;
 }
 
+export interface UpdateProfilePayload {
+  username: string;
+  email: string;
+  school: string;
+}
+
 export interface DownloadAction {
   resource_id: number;
   download_url: string;
@@ -69,4 +75,9 @@ export interface ResourceFilters {
   keyword?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface UpdateMyResourcePayload {
+  description: string;
+  file?: File | null;
 }

@@ -8,11 +8,18 @@ import { getCurrentUserWithToken, login } from "@/api/auth";
 import { BrandMark } from "@/components/common/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  hasAuthErrors,
+  validateAccount,
+  validateLoginForm,
+  validatePassword,
+} from "@/utils/auth-validation";
 
 export function LoginPage() {
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ account?: string; password?: string }>({});
   const navigate = useNavigate();
   const location = useLocation();
   const setSession = useAuthStore((state) => state.setSession);
@@ -20,6 +27,11 @@ export function LoginPage() {
   const loginRequest = useRequest(
     async () => {
       setErrorMessage("");
+      const nextErrors = validateLoginForm({ account, password });
+      setFieldErrors(nextErrors);
+      if (hasAuthErrors(nextErrors)) {
+        return;
+      }
       const token = await login({ account, password });
       const user = await getCurrentUserWithToken(token.access_token);
       setSession(token.access_token, user);
@@ -82,17 +94,51 @@ export function LoginPage() {
           <TextInput
             label="用户名或邮箱"
             value={account}
-            onChange={(event) => setAccount(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setAccount(nextValue);
+              if (fieldErrors.account) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  account: validateAccount(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                account: validateAccount(account),
+              }))
+            }
             radius="xl"
             size="md"
+            error={fieldErrors.account}
+            description="支持输入注册时使用的用户名或邮箱。"
             required
           />
           <PasswordInput
             label="密码"
             value={password}
-            onChange={(event) => setPassword(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setPassword(nextValue);
+              if (fieldErrors.password) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  password: validatePassword(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                password: validatePassword(password),
+              }))
+            }
             radius="xl"
             size="md"
+            error={fieldErrors.password}
+            description="密码至少 8 位。"
             required
           />
 

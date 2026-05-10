@@ -1,5 +1,5 @@
 import { Drawer } from "@mantine/core";
-import { BookCopy, ChevronRight, LayoutDashboard, LogOut, Menu, UserRound } from "lucide-react";
+import { BookCopy, BookOpenText, ChevronRight, LayoutDashboard, LogOut, Menu, UploadCloud, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
@@ -10,6 +10,9 @@ import { useAuthStore } from "@/store/auth-store";
 const navItems = [
   { to: "/", label: "总览", icon: LayoutDashboard },
   { to: "/resources", label: "资料", icon: BookCopy },
+  { to: "/knowledge-base", label: "知识库", icon: BookOpenText },
+  { to: "/account", label: "个人中心", icon: UserRound },
+  { to: "/my-uploads", label: "我的上传", icon: UploadCloud },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -46,6 +49,15 @@ const routeMeta: Record<string, { title: string }> = {
   },
   "/resources": {
     title: "资料",
+  },
+  "/knowledge-base": {
+    title: "知识库",
+  },
+  "/account": {
+    title: "个人中心",
+  },
+  "/my-uploads": {
+    title: "我的上传",
   },
 };
 

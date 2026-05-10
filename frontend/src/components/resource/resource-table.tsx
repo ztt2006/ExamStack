@@ -1,5 +1,6 @@
 import { Select, TextInput } from "@mantine/core";
 import { Download, Eye, FileText, ImageIcon, NotebookTabs } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useEffect, useState } from "react";
 
@@ -24,6 +25,7 @@ interface ResourceTableProps {
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   loading?: boolean;
+  renderActions?: (resource: Resource) => ReactNode;
 }
 
 export function ResourceTable({
@@ -32,7 +34,11 @@ export function ResourceTable({
   onPageChange,
   onPageSizeChange,
   loading = false,
+  renderActions,
 }: ResourceTableProps) {
+  const desktopGridClass = renderActions
+    ? "lg:grid-cols-[minmax(0,2.4fr)_1fr_0.8fr_260px]"
+    : "lg:grid-cols-[minmax(0,2.8fr)_1fr_0.8fr_120px]";
   const summary = pagination
     ? buildPaginationSummary(
         pagination.total,
@@ -67,7 +73,9 @@ export function ResourceTable({
 
   return (
     <div className="panel-card overflow-hidden">
-      <div className="hidden grid-cols-[minmax(0,2.8fr)_1fr_0.8fr_120px] gap-4 border-b border-[oklch(0.92_0.02_230)] bg-[oklch(0.99_0.012_230/.9)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-sky-strong)] lg:grid">
+      <div
+        className={`hidden gap-4 border-b border-[oklch(0.92_0.02_230)] bg-[oklch(0.99_0.012_230/.9)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-sky-strong)] lg:grid ${desktopGridClass}`}
+      >
         <span>文档</span>
         <span>上传者</span>
         <span>大小 / 下载</span>
@@ -86,7 +94,7 @@ export function ResourceTable({
             key={resource.id}
             className="px-4 py-4 transition-colors hover:bg-[oklch(0.99_0.015_228/.85)] sm:px-5"
           >
-            <div className="hidden grid-cols-[minmax(0,2.8fr)_1fr_0.8fr_120px] items-center gap-4 lg:grid">
+            <div className={`hidden items-center gap-4 lg:grid ${desktopGridClass}`}>
               <div className="min-w-0">
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[oklch(0.9_0.03_228)] bg-[oklch(0.995_0.012_230/.95)] text-[var(--color-sky-strong)]">
@@ -113,9 +121,13 @@ export function ResourceTable({
               </div>
 
               <div className="flex justify-end">
-                <Link to={`/resources/${resource.id}`} className="admin-secondary-btn text-center">
-                  查看
-                </Link>
+                {renderActions ? (
+                  <div className="flex justify-end gap-2 whitespace-nowrap">{renderActions(resource)}</div>
+                ) : (
+                  <Link to={`/resources/${resource.id}`} className="admin-secondary-btn text-center">
+                    查看
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -134,9 +146,15 @@ export function ResourceTable({
                     {resource.description}
                   </p>
                 </div>
-                <Link to={`/resources/${resource.id}`} className="admin-secondary-btn shrink-0">
-                  查看
-                </Link>
+                <div className="shrink-0">
+                  {renderActions ? (
+                    <div className="flex flex-col items-end gap-2">{renderActions(resource)}</div>
+                  ) : (
+                    <Link to={`/resources/${resource.id}`} className="admin-secondary-btn shrink-0">
+                      查看
+                    </Link>
+                  )}
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[var(--color-ink)]">

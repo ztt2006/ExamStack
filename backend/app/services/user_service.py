@@ -7,6 +7,7 @@ from app.core.security import get_password_hash, verify_password
 from app.models.point_transaction import PointTransaction
 from app.models.user import User
 from app.schemas.auth import RegisterRequest
+from app.schemas.user import UpdateProfileRequest
 
 
 class UserService:
@@ -51,3 +52,24 @@ class UserService:
         if user is None or not verify_password(password, user.hashed_password):
             raise AppException(message="invalid credentials", code=4013, status_code=401)
         return user
+
+    def update_profile(self, current_user: User, payload: UpdateProfileRequest) -> User:
+        username = payload.username.strip()
+        email = payload.email.strip().lower()
+        school = payload.school.strip()
+
+        existing_username = self.db.execute(select(User).where(User.username == username)).scalar_one_or_none()
+        if existing_username is not None and existing_username.id != current_user.id:
+            raise AppException(message="username already exists", code=4002, status_code=400)
+
+        existing_email = self.db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+        if existing_email is not None and existing_email.id != current_user.id:
+            raise AppException(message="email already exists", code=4003, status_code=400)
+
+        current_user.username = username
+        current_user.email = email
+        current_user.school = school
+        self.db.add(current_user)
+        self.db.commit()
+        self.db.refresh(current_user)
+        return current_user

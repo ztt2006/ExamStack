@@ -125,6 +125,51 @@ class ResourceService:
             raise AppException(message="resource not found", code=4042, status_code=404)
         return resource
 
+    def get_user_resource(self, *, resource_id: int, user_id: int) -> Resource:
+        statement = (
+            select(Resource)
+            .options(joinedload(Resource.uploader))
+            .where(Resource.id == resource_id, Resource.uploader_id == user_id)
+        )
+        resource = self.db.execute(statement).scalar_one_or_none()
+        if resource is None:
+            raise AppException(message="resource not found", code=4042, status_code=404)
+        return resource
+
+    def update_user_resource(
+        self,
+        *,
+        resource_id: int,
+        current_user: User,
+        description: str,
+        upload_file: UploadFile | None = None,
+    ) -> Resource:
+        resource = self.get_user_resource(resource_id=resource_id, user_id=current_user.id)
+        resource.description = description
+
+        if upload_file is not None and upload_file.filename:
+            old_file_path = resource.file_path
+            stored_filename, file_path, file_size = save_upload_file(upload_file)
+            resource.original_filename = upload_file.filename or stored_filename
+            resource.stored_filename = stored_filename
+            resource.file_path = file_path
+            resource.file_size = file_size
+            resource.mime_type = upload_file.content_type or "application/octet-stream"
+            cos_utils.delete_object(old_file_path)
+
+        self.db.add(resource)
+        self.db.commit()
+        self.db.refresh(resource)
+        return resource
+
+    def delete_user_resource(self, *, resource_id: int, current_user: User) -> int:
+        resource = self.get_user_resource(resource_id=resource_id, user_id=current_user.id)
+        self.db.query(DownloadRecord).filter(DownloadRecord.resource_id == resource.id).delete()
+        self.db.delete(resource)
+        self.db.commit()
+        cos_utils.delete_object(resource.file_path)
+        return resource.id
+
     def handle_download(self, resource_id: int, current_user: User) -> DownloadActionResponse:
         resource = self.get_resource(resource_id)
         resource.download_count += 1

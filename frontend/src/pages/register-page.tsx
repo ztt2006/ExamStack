@@ -8,6 +8,14 @@ import { getCurrentUserWithToken, login, register } from "@/api/auth";
 import { BrandMark } from "@/components/common/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  hasAuthErrors,
+  validateEmail,
+  validatePassword,
+  validateRegisterForm,
+  validateSchool,
+  validateUsername,
+} from "@/utils/auth-validation";
 
 export function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -15,12 +23,23 @@ export function RegisterPage() {
   const [school, setSchool] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    username?: string;
+    email?: string;
+    school?: string;
+    password?: string;
+  }>({});
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
 
   const registerRequest = useRequest(
     async () => {
       setErrorMessage("");
+      const nextErrors = validateRegisterForm({ username, email, school, password });
+      setFieldErrors(nextErrors);
+      if (hasAuthErrors(nextErrors)) {
+        return;
+      }
       await register({ username, email, school, password });
       const token = await login({ account: email, password });
       const user = await getCurrentUserWithToken(token.access_token);
@@ -53,30 +72,96 @@ export function RegisterPage() {
           <TextInput
             label="用户名"
             value={username}
-            onChange={(event) => setUsername(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setUsername(nextValue);
+              if (fieldErrors.username) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  username: validateUsername(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                username: validateUsername(username),
+              }))
+            }
             radius="xl"
+            error={fieldErrors.username}
+            description="3-50 个字符，可使用中文、字母、数字、下划线或短横线。"
             required
           />
           <TextInput
             label="邮箱"
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setEmail(nextValue);
+              if (fieldErrors.email) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  email: validateEmail(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                email: validateEmail(email),
+              }))
+            }
             radius="xl"
+            error={fieldErrors.email}
             required
           />
           <TextInput
             label="学校"
             value={school}
-            onChange={(event) => setSchool(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setSchool(nextValue);
+              if (fieldErrors.school) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  school: validateSchool(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                school: validateSchool(school),
+              }))
+            }
             radius="xl"
+            error={fieldErrors.school}
             required
           />
           <PasswordInput
             label="密码"
             value={password}
-            onChange={(event) => setPassword(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              setPassword(nextValue);
+              if (fieldErrors.password) {
+                setFieldErrors((current) => ({
+                  ...current,
+                  password: validatePassword(nextValue),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setFieldErrors((current) => ({
+                ...current,
+                password: validatePassword(password),
+              }))
+            }
             radius="xl"
+            error={fieldErrors.password}
+            description="至少 8 位。"
             required
           />
 
