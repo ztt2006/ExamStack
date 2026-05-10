@@ -22,6 +22,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const collapsed = ref(false)
 const mobileOpen = ref(false)
+const appMode = import.meta.env.MODE
 
 const menuItems = [
   { index: '/dashboard', title: '工作台', icon: DataBoard },
@@ -95,7 +96,7 @@ async function handleLogout() {
         </div>
 
         <div class="topbar-actions">
-          <el-tag effect="plain" round>API {{ import.meta.env.MODE }}</el-tag>
+          <el-tag effect="plain" round>API {{ appMode }}</el-tag>
           <el-dropdown trigger="click">
             <button class="user-chip" type="button">
               <el-avatar :size="32" :src="authStore.user?.avatar_url || ''">

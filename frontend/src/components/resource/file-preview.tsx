@@ -1,4 +1,5 @@
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, LoaderCircle, RadioTower } from "lucide-react";
+import { useState } from "react";
 
 import type { Resource } from "@/types";
 import { resolveBackendUrl } from "@/utils/resource";
@@ -8,6 +9,7 @@ interface FilePreviewProps {
 }
 
 export function FilePreview({ resource }: FilePreviewProps) {
+  const [previewLoading, setPreviewLoading] = useState(true);
   const previewUrl = resolveBackendUrl(resource.preview_url);
   const fileUrl = resolveBackendUrl(resource.download_url);
   const isDocx =
@@ -18,10 +20,18 @@ export function FilePreview({ resource }: FilePreviewProps) {
   if (resource.mime_type.startsWith("image/")) {
     return (
       <div className="panel-card overflow-hidden p-4">
+        {previewLoading ? (
+          <div className="flex min-h-40 items-center justify-center gap-2 text-sm font-semibold text-[var(--color-ink-soft)]">
+            <LoaderCircle size={16} className="animate-spin" />
+            正在加载预览
+          </div>
+        ) : null}
         <img
           src={previewUrl}
           alt={resource.original_filename}
-          className="h-auto max-h-[68dvh] w-full rounded-[1.35rem] object-contain"
+          loading="lazy"
+          onLoad={() => setPreviewLoading(false)}
+          className={`h-auto max-h-[68dvh] w-full rounded-[1.35rem] object-contain ${previewLoading ? "hidden" : ""}`}
         />
       </div>
     );
@@ -30,9 +40,25 @@ export function FilePreview({ resource }: FilePreviewProps) {
   if (resource.mime_type.includes("pdf") || isDocx) {
     return (
       <div className="panel-card overflow-hidden p-4">
+        {!isDocx ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-[oklch(0.9_0.03_230)] bg-white/75 px-4 py-3 text-sm text-[var(--color-ink-soft)]">
+            <span className="inline-flex items-center gap-2 font-semibold text-[var(--color-ink-strong)]">
+              <RadioTower size={16} className="text-[var(--color-sky-strong)]" />
+              正在使用流式预览
+            </span>
+            <span>打开即预览，滚动时继续按需加载。</span>
+          </div>
+        ) : null}
+        {previewLoading ? (
+          <div className="flex min-h-40 items-center justify-center gap-2 text-sm font-semibold text-[var(--color-ink-soft)]">
+            <LoaderCircle size={16} className="animate-spin" />
+            正在建立预览流
+          </div>
+        ) : null}
         <iframe
           src={previewUrl}
           title={resource.original_filename}
+          onLoad={() => setPreviewLoading(false)}
           className="h-[78dvh] min-h-[720px] w-full rounded-[1.35rem] bg-white"
         />
       </div>

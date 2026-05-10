@@ -306,15 +306,20 @@ class ResourceService:
             },
         )
 
-    def build_preview_response(self, resource: Resource):
+    def build_preview_response(self, resource: Resource, range_header: str | None = None):
         if self._is_docx(resource):
             return HTMLResponse(content=self._render_docx_preview(resource), media_type="text/html")
 
-        stream, content_type = self._download_stream(resource)
+        if range_header and self._supports_range_preview(resource):
+            return self._build_range_response(resource, range_header)
+
+        stream, content_type = self._download_chunk_iter(resource)
         return StreamingResponse(
             stream,
             media_type=self._resolve_media_type(resource, content_type),
             headers={
+                "Accept-Ranges": "bytes" if self._supports_range_preview(resource) else "none",
+                "Content-Length": str(resource.file_size),
                 "Content-Disposition": self._build_content_disposition(
                     "inline",
                     resource.original_filename,
@@ -351,6 +356,58 @@ class ResourceService:
         except FileNotFoundError as exc:
             raise AppException(message="resource file not found", code=4043, status_code=404) from exc
         return stream, content_type
+
+    def _download_chunk_iter(self, resource: Resource):
+        try:
+            stream, content_type = cos_utils.download_chunk_iter(resource.file_path)
+        except FileNotFoundError as exc:
+            raise AppException(message="resource file not found", code=4043, status_code=404) from exc
+        return stream, content_type
+
+    def _build_range_response(self, resource: Resource, range_header: str) -> StreamingResponse:
+        start, end = self._parse_range_header(range_header, resource.file_size)
+        try:
+            stream, content_type, total_size = cos_utils.download_range_stream(resource.file_path, start, end)
+        except FileNotFoundError as exc:
+            raise AppException(message="resource file not found", code=4043, status_code=404) from exc
+
+        total = total_size or resource.file_size
+        bounded_end = min(end if end is not None else total - 1, total - 1)
+        return StreamingResponse(
+            stream,
+            status_code=206,
+            media_type=self._resolve_media_type(resource, content_type),
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Range": f"bytes {start}-{bounded_end}/{total}",
+                "Content-Length": str(bounded_end - start + 1),
+                "Content-Disposition": self._build_content_disposition(
+                    "inline",
+                    resource.original_filename,
+                ),
+            },
+        )
+
+    def _supports_range_preview(self, resource: Resource) -> bool:
+        return resource.mime_type.startswith("image/") or "pdf" in resource.mime_type
+
+    def _parse_range_header(self, range_header: str, file_size: int) -> tuple[int, int | None]:
+        unit, _, raw_range = range_header.partition("=")
+        if unit.strip().lower() != "bytes" or "-" not in raw_range:
+            raise AppException(message="invalid range header", code=4160, status_code=416)
+
+        raw_start, raw_end = raw_range.split("-", 1)
+        if not raw_start:
+            suffix_length = int(raw_end)
+            if suffix_length <= 0:
+                raise AppException(message="invalid range header", code=4160, status_code=416)
+            return max(file_size - suffix_length, 0), file_size - 1
+
+        start = int(raw_start)
+        end = int(raw_end) if raw_end else None
+        if start < 0 or start >= file_size or (end is not None and end < start):
+            raise AppException(message="invalid range header", code=4160, status_code=416)
+        return start, min(end, file_size - 1) if end is not None else None
 
     def _resolve_media_type(self, resource: Resource, downloaded_content_type: str | None) -> str:
         if downloaded_content_type and downloaded_content_type != "application/octet-stream":

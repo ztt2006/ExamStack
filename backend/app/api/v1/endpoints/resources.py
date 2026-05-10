@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -90,10 +90,10 @@ def get_resource_detail(resource_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{resource_id}/preview")
-def preview_resource(resource_id: int, db: Session = Depends(get_db)):
+def preview_resource(resource_id: int, request: Request, db: Session = Depends(get_db)):
     service = ResourceService(db)
     resource = service.get_resource(resource_id)
-    return service.build_preview_response(resource)
+    return service.build_preview_response(resource, range_header=request.headers.get("range"))
 
 
 @router.get("/{resource_id}/file")

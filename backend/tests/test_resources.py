@@ -29,12 +29,31 @@ def fake_cos_storage(monkeypatch):
         payload = stored_objects[key]
         return BytesIO(payload["body"]), payload["content_type"]  # type: ignore[return-value]
 
+    def fake_chunk_iter(key: str):
+        if key not in stored_objects:
+            raise FileNotFoundError(key)
+        payload = stored_objects[key]
+        body = payload["body"]
+        assert isinstance(body, bytes)
+        return iter([body]), payload["content_type"]  # type: ignore[return-value]
+
+    def fake_range(key: str, start: int, end: int | None = None):
+        if key not in stored_objects:
+            raise FileNotFoundError(key)
+        payload = stored_objects[key]
+        body = payload["body"]
+        assert isinstance(body, bytes)
+        bounded_end = min(end if end is not None else len(body) - 1, len(body) - 1)
+        return BytesIO(body[start : bounded_end + 1]), payload["content_type"], len(body)  # type: ignore[return-value]
+
     def fake_delete(key: str) -> None:
         stored_objects.pop(key, None)
 
     monkeypatch.setattr(cos_utils, "upload_bytes", fake_upload)
     monkeypatch.setattr(cos_utils, "download_bytes", fake_download)
     monkeypatch.setattr(cos_utils, "download_stream", fake_stream)
+    monkeypatch.setattr(cos_utils, "download_chunk_iter", fake_chunk_iter)
+    monkeypatch.setattr(cos_utils, "download_range_stream", fake_range)
     monkeypatch.setattr(cos_utils, "delete_object", fake_delete)
     yield stored_objects
 
@@ -481,3 +500,28 @@ def test_preview_prefers_resource_mime_type_when_cos_content_type_is_generic(fak
     assert preview_response.status_code == 200
     assert preview_response.headers["content-type"].startswith("application/pdf")
     assert "inline" in preview_response.headers.get("content-disposition", "").lower()
+    assert preview_response.headers["accept-ranges"] == "bytes"
+
+
+def test_preview_pdf_supports_range_requests(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_response = client.post(
+        "/api/v1/resources",
+        data={"description": "Range PDF preview"},
+        files={"file": ("range.pdf", b"0123456789", "application/pdf")},
+        headers=headers,
+    )
+
+    resource_id = create_response.json()["data"]["id"]
+    preview_response = client.get(
+        f"/api/v1/resources/{resource_id}/preview",
+        headers={"Range": "bytes=2-5"},
+    )
+
+    assert preview_response.status_code == 206
+    assert preview_response.content == b"2345"
+    assert preview_response.headers["content-range"] == "bytes 2-5/10"
+    assert preview_response.headers["accept-ranges"] == "bytes"
