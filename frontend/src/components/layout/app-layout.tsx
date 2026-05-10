@@ -110,6 +110,13 @@ export function AppLayout() {
             <NavLinks tone="light" />
           </div>
 
+          <div className="px-4 pb-4">
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-3 py-3">
+              <p className="text-xs font-medium text-[var(--admin-muted)]">QQ 群</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--admin-ink)]">256333372</p>
+            </div>
+          </div>
+
           <div className="border-t border-[var(--admin-border)] p-4">
             {token && user ? (
               <div className="rounded-lg border border-[var(--admin-border)] bg-white p-3">
@@ -202,6 +209,10 @@ export function AppLayout() {
         >
           <div className="flex h-full flex-col gap-6">
             <NavLinks tone="light" onNavigate={() => setOpened(false)} />
+            <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-soft)] px-3 py-3">
+              <p className="text-xs font-medium text-[var(--admin-muted)]">QQ 群</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--admin-ink)]">256333372</p>
+            </div>
             <div className="sidebar-card">
               {token && user ? (
                 <>
