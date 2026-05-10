@@ -1,0 +1,58 @@
+# ###########################################################
+# GitHub 自动忽略密钥、环境变量、IDE 文件、Python 缓存等
+# ###########################################################
+
+# 1. 环境变量 / 密钥文件（最重要！）
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# 2. Python 编译文件、缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. 日志、数据库、临时文件
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.mysql
+tmp/
+temp/
+*.tmp
+.DS_Store
+
+# 4. IDE / 编辑器配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 5. 后端 / 框架通用
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# 6. 前端（如果有）
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
