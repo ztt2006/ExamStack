@@ -1,11 +1,13 @@
 from html import escape
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
 from fastapi import UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -16,6 +18,7 @@ from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.common import PaginationMeta
 from app.schemas.resource import DownloadActionResponse, ResourceListResponse, ResourceResponse
+from app.utils import cos as cos_utils
 from app.utils.file import save_upload_file
 
 
@@ -78,13 +81,30 @@ class ResourceService:
             pagination=PaginationMeta(total=total, page=page, page_size=page_size),
         )
 
-    def list_user_resources(self, *, user_id: int, page: int = 1, page_size: int = 10) -> ResourceListResponse:
+    def list_user_resources(
+        self,
+        *,
+        user_id: int,
+        keyword: str | None = None,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> ResourceListResponse:
         statement: Select[tuple[Resource]] = (
             select(Resource)
             .options(joinedload(Resource.uploader))
             .where(Resource.uploader_id == user_id)
             .order_by(Resource.created_at.desc(), Resource.id.desc())
         )
+
+        if keyword:
+            keyword_like = f"%{keyword}%"
+            statement = statement.where(
+                or_(
+                    Resource.description.ilike(keyword_like),
+                    Resource.original_filename.ilike(keyword_like),
+                )
+            )
+
         total = self.db.execute(select(func.count()).select_from(statement.subquery())).scalar_one()
         items = list(
             self.db.execute(statement.offset((page - 1) * page_size).limit(page_size)).scalars().unique().all()
@@ -115,15 +135,33 @@ class ResourceService:
             download_url=f"/api/v1/resources/{resource.id}/file",
         )
 
+    def build_file_response(self, resource: Resource) -> StreamingResponse:
+        stream, content_type = self._download_stream(resource)
+        return StreamingResponse(
+            stream,
+            media_type=self._resolve_media_type(resource, content_type),
+            headers={
+                "Content-Disposition": self._build_content_disposition(
+                    "attachment",
+                    resource.original_filename,
+                ),
+            },
+        )
+
     def build_preview_response(self, resource: Resource):
         if self._is_docx(resource):
             return HTMLResponse(content=self._render_docx_preview(resource), media_type="text/html")
 
-        return FileResponse(
-            path=resource.file_path,
-            filename=Path(resource.original_filename).name,
-            media_type=resource.mime_type,
-            content_disposition_type="inline",
+        stream, content_type = self._download_stream(resource)
+        return StreamingResponse(
+            stream,
+            media_type=self._resolve_media_type(resource, content_type),
+            headers={
+                "Content-Disposition": self._build_content_disposition(
+                    "inline",
+                    resource.original_filename,
+                ),
+            },
         )
 
     def to_response(self, resource: Resource) -> ResourceResponse:
@@ -149,9 +187,31 @@ class ResourceService:
             or suffix == ".docx"
         )
 
+    def _download_stream(self, resource: Resource) -> tuple[BytesIO, str]:
+        try:
+            stream, content_type = cos_utils.download_stream(resource.file_path)
+        except FileNotFoundError as exc:
+            raise AppException(message="resource file not found", code=4043, status_code=404) from exc
+        return stream, content_type
+
+    def _resolve_media_type(self, resource: Resource, downloaded_content_type: str | None) -> str:
+        if downloaded_content_type and downloaded_content_type != "application/octet-stream":
+            return downloaded_content_type
+        return resource.mime_type or "application/octet-stream"
+
+    def _build_content_disposition(self, disposition_type: str, filename: str) -> str:
+        safe_name = Path(filename).name
+        ascii_fallback = safe_name.encode("ascii", "ignore").decode("ascii") or "download"
+        encoded_name = quote(safe_name)
+        return (
+            f'{disposition_type}; filename="{ascii_fallback}"; '
+            f"filename*=UTF-8''{encoded_name}"
+        )
+
     def _render_docx_preview(self, resource: Resource) -> str:
         try:
-            with ZipFile(resource.file_path) as archive:
+            document_bytes, _ = cos_utils.download_bytes(resource.file_path)
+            with ZipFile(BytesIO(document_bytes)) as archive:
                 document_xml = archive.read("word/document.xml")
         except FileNotFoundError as exc:
             raise AppException(message="resource file not found", code=4043, status_code=404) from exc

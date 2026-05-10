@@ -6,15 +6,30 @@ export async function getMyProfile() {
   return response.data.data;
 }
 
-export async function getMyResources(page = 1, pageSize = 10) {
+export interface MyResourcesFilters {
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function getMyResources(filters: MyResourcesFilters = {}) {
+  const { keyword, page = 1, pageSize = 10 } = filters;
   const response = await apiClient.get<ApiResponse<ResourceListPayload>>(
     "/users/me/resources",
     {
       params: {
+        keyword,
         page,
         page_size: pageSize,
       },
     },
+  );
+  return response.data.data;
+}
+
+export async function deleteMyResource(resourceId: number) {
+  const response = await apiClient.delete<ApiResponse<{ id: number }>>(
+    `/users/me/resources/${resourceId}`,
   );
   return response.data.data;
 }

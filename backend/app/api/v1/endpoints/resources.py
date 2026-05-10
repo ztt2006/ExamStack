@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, Form, UploadFile
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -59,12 +56,9 @@ def preview_resource(resource_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{resource_id}/file")
 def get_resource_file(resource_id: int, db: Session = Depends(get_db)):
-    resource = ResourceService(db).get_resource(resource_id)
-    return FileResponse(
-        path=resource.file_path,
-        filename=Path(resource.original_filename).name,
-        media_type=resource.mime_type,
-    )
+    service = ResourceService(db)
+    resource = service.get_resource(resource_id)
+    return service.build_file_response(resource)
 
 
 @router.post("/{resource_id}/download")

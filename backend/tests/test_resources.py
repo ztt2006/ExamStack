@@ -2,9 +2,41 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+
+
+@pytest.fixture(autouse=True)
+def fake_cos_storage(monkeypatch):
+    from app.utils import cos as cos_utils
+
+    stored_objects: dict[str, dict[str, bytes | str]] = {}
+
+    def fake_upload(*, key: str, body: bytes, content_type: str) -> None:
+        stored_objects[key] = {"body": body, "content_type": content_type}
+
+    def fake_download(key: str) -> tuple[bytes, str]:
+        if key not in stored_objects:
+            raise FileNotFoundError(key)
+        payload = stored_objects[key]
+        return payload["body"], payload["content_type"]  # type: ignore[return-value]
+
+    def fake_stream(key: str):
+        if key not in stored_objects:
+            raise FileNotFoundError(key)
+        payload = stored_objects[key]
+        return BytesIO(payload["body"]), payload["content_type"]  # type: ignore[return-value]
+
+    def fake_delete(key: str) -> None:
+        stored_objects.pop(key, None)
+
+    monkeypatch.setattr(cos_utils, "upload_bytes", fake_upload)
+    monkeypatch.setattr(cos_utils, "download_bytes", fake_download)
+    monkeypatch.setattr(cos_utils, "download_stream", fake_stream)
+    monkeypatch.setattr(cos_utils, "delete_object", fake_delete)
+    yield stored_objects
 
 
 def _register_and_login(client: TestClient) -> str:
@@ -24,7 +56,7 @@ def _register_and_login(client: TestClient) -> str:
     return response.json()["data"]["access_token"]
 
 
-def test_create_and_filter_resources() -> None:
+def test_create_and_filter_resources(fake_cos_storage) -> None:
     client = TestClient(create_app())
     token = _register_and_login(client)
     headers = {"Authorization": f"Bearer {token}"}
@@ -42,6 +74,9 @@ def test_create_and_filter_resources() -> None:
 
     assert create_response.status_code == 201
     resource_id = create_response.json()["data"]["id"]
+    assert create_response.json()["data"]["download_url"].endswith(f"/api/v1/resources/{resource_id}/file")
+    assert len(fake_cos_storage) == 1
+    assert next(iter(fake_cos_storage)).startswith("examstack/uploads/")
 
     list_response = client.get(
         "/api/v1/resources",
@@ -141,3 +176,75 @@ def test_preview_docx_returns_html() -> None:
     assert preview_response.status_code == 200
     assert preview_response.headers["content-type"].startswith("text/html")
     assert "Sorting and searching notes" in preview_response.text
+
+
+def test_preview_returns_404_when_cos_object_missing(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sample_path = Path(__file__).resolve()
+    with sample_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/api/v1/resources",
+            data={"description": "Missing COS preview"},
+            files={"file": ("missing.pdf", file_obj, "application/pdf")},
+            headers=headers,
+        )
+
+    resource_id = create_response.json()["data"]["id"]
+    fake_cos_storage.clear()
+
+    preview_response = client.get(f"/api/v1/resources/{resource_id}/preview")
+    file_response = client.get(f"/api/v1/resources/{resource_id}/file")
+
+    assert preview_response.status_code == 404
+    assert preview_response.json()["message"] == "resource file not found"
+    assert file_response.status_code == 404
+    assert file_response.json()["message"] == "resource file not found"
+
+
+def test_preview_handles_non_ascii_filename() -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sample_path = Path(__file__).resolve()
+    with sample_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/api/v1/resources",
+            data={"description": "中文文件名预览"},
+            files={"file": ("算法笔记.pdf", file_obj, "application/pdf")},
+            headers=headers,
+        )
+
+    resource_id = create_response.json()["data"]["id"]
+    preview_response = client.get(f"/api/v1/resources/{resource_id}/preview")
+
+    assert preview_response.status_code == 200
+    assert "filename*" in preview_response.headers.get("content-disposition", "")
+
+
+def test_preview_prefers_resource_mime_type_when_cos_content_type_is_generic(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    sample_path = Path(__file__).resolve()
+    with sample_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/api/v1/resources",
+            data={"description": "PDF preview should stay inline"},
+            files={"file": ("preview.pdf", file_obj, "application/pdf")},
+            headers=headers,
+        )
+
+    resource_id = create_response.json()["data"]["id"]
+    object_key = next(iter(fake_cos_storage))
+    fake_cos_storage[object_key]["content_type"] = "application/octet-stream"
+
+    preview_response = client.get(f"/api/v1/resources/{resource_id}/preview")
+
+    assert preview_response.status_code == 200
+    assert preview_response.headers["content-type"].startswith("application/pdf")
+    assert "inline" in preview_response.headers.get("content-disposition", "").lower()

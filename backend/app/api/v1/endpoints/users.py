@@ -23,12 +23,14 @@ def my_profile(
 @router.get("/me/resources")
 def my_resources(
     current_user: User = Depends(get_current_user),
+    keyword: str | None = None,
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db),
 ):
     payload = ResourceService(db).list_user_resources(
         user_id=current_user.id,
+        keyword=keyword,
         page=page,
         page_size=page_size,
     )

@@ -29,6 +29,11 @@ class Settings(BaseSettings):
         alias="UPLOAD_DIR",
     )
     max_upload_size_mb: int = Field(default=20, alias="MAX_UPLOAD_SIZE_MB")
+    cos_secret_id: str = Field(default="", alias="COS_SECRET_ID")
+    cos_secret_key: str = Field(default="", alias="COS_SECRET_KEY")
+    cos_region: str = Field(default="", alias="COS_REGION")
+    cos_bucket: str = Field(default="", alias="COS_BUCKET")
+    cos_prefix: str = Field(default="examstack/uploads", alias="COS_PREFIX")
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
