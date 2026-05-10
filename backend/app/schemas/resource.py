@@ -27,3 +27,28 @@ class ResourceListResponse(BaseModel):
 class DownloadActionResponse(BaseModel):
     resource_id: int
     download_url: str
+
+
+class ChunkedUploadInitRequest(BaseModel):
+    file_key: str
+    filename: str
+    file_size: int
+    mime_type: str
+    chunk_size: int
+
+
+class ChunkedUploadInitResponse(BaseModel):
+    upload_id: str
+    uploaded_chunks: list[int]
+    chunk_size: int
+    max_file_size: int
+
+
+class ChunkUploadResponse(BaseModel):
+    upload_id: str
+    uploaded_chunks: list[int]
+
+
+class ChunkedUploadCompleteRequest(BaseModel):
+    upload_id: str
+    description: str

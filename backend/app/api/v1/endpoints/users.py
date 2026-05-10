@@ -32,6 +32,16 @@ def update_my_profile(
     return success_response(UserResponse.model_validate(user).model_dump(mode="json"))
 
 
+@router.post("/me/avatar")
+def upload_my_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = UserService(db).update_avatar(current_user, file)
+    return success_response(UserResponse.model_validate(user).model_dump(mode="json"))
+
+
 @router.get("/me/resources")
 def my_resources(
     current_user: User = Depends(get_current_user),

@@ -1,4 +1,8 @@
-from sqlalchemy import or_, select
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import UploadFile
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -19,7 +23,16 @@ class UserService:
         return self.db.get(User, user_id)
 
     def get_by_account(self, account: str) -> User | None:
-        statement = select(User).where(or_(User.username == account, User.email == account))
+        normalized_account = account.strip()
+        if not normalized_account:
+            return None
+
+        statement = select(User).where(
+            or_(
+                User.username == normalized_account,
+                func.lower(User.email) == normalized_account.lower(),
+            )
+        )
         return self.db.execute(statement).scalar_one_or_none()
 
     def create_user(self, payload: RegisterRequest) -> User:
@@ -73,3 +86,41 @@ class UserService:
         self.db.commit()
         self.db.refresh(current_user)
         return current_user
+
+    def update_avatar(self, current_user: User, upload_file: UploadFile) -> User:
+        content_type = upload_file.content_type or ""
+        if not content_type.startswith("image/"):
+            raise AppException(message="avatar must be an image", code=4007, status_code=400)
+
+        content = upload_file.file.read()
+        max_size = min(self.settings.max_upload_size_mb, 5) * 1024 * 1024
+        if len(content) > max_size:
+            raise AppException(message="avatar file too large", code=4008, status_code=400)
+
+        suffix = Path(upload_file.filename or "").suffix.lower()
+        if suffix not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            suffix = ".jpg"
+
+        avatar_dir = Path(self.settings.upload_dir) / "avatars"
+        avatar_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"user-{current_user.id}-{uuid4().hex}{suffix}"
+        file_path = avatar_dir / filename
+        file_path.write_bytes(content)
+
+        if current_user.avatar_url:
+            previous_path = self._local_static_path(current_user.avatar_url)
+            if previous_path and previous_path.is_file() and previous_path != file_path:
+                previous_path.unlink()
+
+        current_user.avatar_url = f"/static/avatars/{filename}"
+        self.db.add(current_user)
+        self.db.commit()
+        self.db.refresh(current_user)
+        return current_user
+
+    def _local_static_path(self, static_url: str) -> Path | None:
+        prefix = "/static/"
+        if not static_url.startswith(prefix):
+            return None
+        relative_path = Path(static_url.removeprefix(prefix))
+        return Path(self.settings.upload_dir) / relative_path

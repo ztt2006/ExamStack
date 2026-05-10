@@ -19,6 +19,18 @@ export async function updateMyProfile(payload: UpdateProfilePayload) {
   return response.data.data;
 }
 
+export async function uploadMyAvatar(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiClient.post<ApiResponse<User>>("/users/me/avatar", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data.data;
+}
+
 export interface MyResourcesFilters {
   keyword?: string;
   page?: number;

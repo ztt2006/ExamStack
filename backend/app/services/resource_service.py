@@ -1,8 +1,10 @@
 from html import escape
 from io import BytesIO
+import json
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
+from uuid import uuid5, NAMESPACE_URL
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
@@ -17,7 +19,14 @@ from app.models.download_record import DownloadRecord
 from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.common import PaginationMeta
-from app.schemas.resource import DownloadActionResponse, ResourceListResponse, ResourceResponse
+from app.schemas.resource import (
+    ChunkUploadResponse,
+    ChunkedUploadInitRequest,
+    ChunkedUploadInitResponse,
+    DownloadActionResponse,
+    ResourceListResponse,
+    ResourceResponse,
+)
 from app.utils import cos as cos_utils
 from app.utils.file import save_upload_file
 
@@ -160,6 +169,110 @@ class ResourceService:
         self.db.add(resource)
         self.db.commit()
         self.db.refresh(resource)
+        return resource
+
+    def init_chunked_upload(
+        self,
+        *,
+        current_user: User,
+        payload: ChunkedUploadInitRequest,
+    ) -> ChunkedUploadInitResponse:
+        self._validate_upload_size(payload.file_size)
+        if payload.chunk_size <= 0:
+            raise AppException(message="invalid chunk size", code=4009, status_code=400)
+
+        upload_id = self._build_upload_id(current_user.id, payload.file_key)
+        session_dir = self._chunk_session_dir(upload_id)
+        chunks_dir = session_dir / "chunks"
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+
+        metadata_path = session_dir / "metadata.json"
+        if metadata_path.exists():
+            metadata = self._read_chunk_metadata(session_dir)
+            if metadata["user_id"] != current_user.id:
+                raise AppException(message="chunked upload not found", code=4044, status_code=404)
+            if metadata["file_size"] != payload.file_size or metadata["filename"] != payload.filename:
+                raise AppException(message="chunked upload metadata mismatch", code=4010, status_code=400)
+        else:
+            metadata = {
+                "user_id": current_user.id,
+                "file_key": payload.file_key,
+                "filename": payload.filename,
+                "file_size": payload.file_size,
+                "mime_type": payload.mime_type or "application/octet-stream",
+                "chunk_size": payload.chunk_size,
+            }
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        return ChunkedUploadInitResponse(
+            upload_id=upload_id,
+            uploaded_chunks=self._uploaded_chunk_indexes(session_dir),
+            chunk_size=int(metadata["chunk_size"]),
+            max_file_size=self._max_upload_size_bytes(),
+        )
+
+    def save_chunk(
+        self,
+        *,
+        current_user: User,
+        upload_id: str,
+        chunk_index: int,
+        upload_file: UploadFile,
+    ) -> ChunkUploadResponse:
+        if chunk_index < 0:
+            raise AppException(message="invalid chunk index", code=4011, status_code=400)
+
+        session_dir = self._authorized_chunk_session_dir(current_user, upload_id)
+        metadata = self._read_chunk_metadata(session_dir)
+        content = upload_file.file.read()
+        if len(content) > int(metadata["chunk_size"]):
+            raise AppException(message="chunk too large", code=4012, status_code=400)
+
+        chunk_path = session_dir / "chunks" / f"{chunk_index}.part"
+        chunk_path.write_bytes(content)
+        return ChunkUploadResponse(upload_id=upload_id, uploaded_chunks=self._uploaded_chunk_indexes(session_dir))
+
+    def complete_chunked_upload(
+        self,
+        *,
+        current_user: User,
+        upload_id: str,
+        description: str,
+    ) -> Resource:
+        session_dir = self._authorized_chunk_session_dir(current_user, upload_id)
+        metadata = self._read_chunk_metadata(session_dir)
+        uploaded_chunks = self._uploaded_chunk_indexes(session_dir)
+        expected_chunks = (int(metadata["file_size"]) + int(metadata["chunk_size"]) - 1) // int(metadata["chunk_size"])
+        missing_chunks = [index for index in range(expected_chunks) if index not in uploaded_chunks]
+        if missing_chunks:
+            raise AppException(message="missing upload chunks", code=4013, status_code=400)
+
+        chunks_dir = session_dir / "chunks"
+        content = b"".join((chunks_dir / f"{index}.part").read_bytes() for index in range(expected_chunks))
+        if len(content) != int(metadata["file_size"]):
+            raise AppException(message="chunked upload size mismatch", code=4014, status_code=400)
+
+        object_key = cos_utils.generate_object_key(str(metadata["filename"]))
+        stored_filename = Path(object_key).name
+        cos_utils.upload_bytes(
+            key=object_key,
+            body=content,
+            content_type=str(metadata["mime_type"] or "application/octet-stream"),
+        )
+
+        resource = Resource(
+            description=description,
+            original_filename=str(metadata["filename"]),
+            stored_filename=stored_filename,
+            file_path=object_key,
+            file_size=len(content),
+            mime_type=str(metadata["mime_type"] or "application/octet-stream"),
+            uploader_id=current_user.id,
+        )
+        self.db.add(resource)
+        self.db.commit()
+        self.db.refresh(resource)
+        self._delete_chunk_session(session_dir)
         return resource
 
     def delete_user_resource(self, *, resource_id: int, current_user: User) -> int:
@@ -356,6 +469,62 @@ class ResourceService:
             "username": current_user.username,
             "email": current_user.email,
             "school": current_user.school,
+            "avatar_url": current_user.avatar_url,
             "points": current_user.points,
             "uploaded_count": resources_count,
         }
+
+    def _max_upload_size_bytes(self) -> int:
+        return self.settings.max_upload_size_mb * 1024 * 1024
+
+    def _validate_upload_size(self, file_size: int) -> None:
+        if file_size > self._max_upload_size_bytes():
+            raise AppException(message="file too large", code=4005, status_code=400)
+
+    def _chunk_root_dir(self) -> Path:
+        path = Path(self.settings.upload_dir).parent / "upload_chunks"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def _build_upload_id(self, user_id: int, file_key: str) -> str:
+        return uuid5(NAMESPACE_URL, f"examstack:{user_id}:{file_key}").hex
+
+    def _chunk_session_dir(self, upload_id: str) -> Path:
+        return self._chunk_root_dir() / upload_id
+
+    def _authorized_chunk_session_dir(self, current_user: User, upload_id: str) -> Path:
+        session_dir = self._chunk_session_dir(upload_id)
+        if not session_dir.exists():
+            raise AppException(message="chunked upload not found", code=4044, status_code=404)
+        metadata = self._read_chunk_metadata(session_dir)
+        if metadata["user_id"] != current_user.id:
+            raise AppException(message="chunked upload not found", code=4044, status_code=404)
+        return session_dir
+
+    def _read_chunk_metadata(self, session_dir: Path) -> dict[str, Any]:
+        metadata_path = session_dir / "metadata.json"
+        if not metadata_path.exists():
+            raise AppException(message="chunked upload not found", code=4044, status_code=404)
+        return json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    def _uploaded_chunk_indexes(self, session_dir: Path) -> list[int]:
+        chunks_dir = session_dir / "chunks"
+        if not chunks_dir.exists():
+            return []
+        return sorted(
+            int(path.stem)
+            for path in chunks_dir.glob("*.part")
+            if path.stem.isdigit()
+        )
+
+    def _delete_chunk_session(self, session_dir: Path) -> None:
+        chunks_dir = session_dir / "chunks"
+        if chunks_dir.exists():
+            for chunk_path in chunks_dir.glob("*.part"):
+                chunk_path.unlink()
+            chunks_dir.rmdir()
+        metadata_path = session_dir / "metadata.json"
+        if metadata_path.exists():
+            metadata_path.unlink()
+        if session_dir.exists():
+            session_dir.rmdir()

@@ -1,12 +1,22 @@
-import { Alert, FileInput, Modal, Select, TextInput, Textarea } from "@mantine/core";
+import { Alert, FileInput, Modal, Progress, Select, TextInput, Textarea } from "@mantine/core";
 import { useRequest } from "ahooks";
-import { AlertCircle, Plus, Shapes, UploadCloud } from "lucide-react";
+import { AlertCircle, FileUp, Gauge, Plus, Shapes, UploadCloud } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { createSubject, getSubjects } from "@/api/subjects";
-import { uploadResource } from "@/api/resources";
+import {
+  getMaxUploadSize,
+  getUploadChunkSize,
+  shouldUseChunkedUpload,
+  uploadResource,
+  type UploadProgress,
+} from "@/api/resources";
 import { Button } from "@/components/ui/button";
+import { formatFileSize } from "@/utils/resource";
+
+const maxUploadSize = getMaxUploadSize();
+const uploadChunkSize = getUploadChunkSize();
 
 export function UploadPage() {
   const navigate = useNavigate();
@@ -17,6 +27,7 @@ export function UploadPage() {
   const [resourceType, setResourceType] = useState("document");
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [subjectModalOpened, setSubjectModalOpened] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
@@ -42,10 +53,16 @@ export function UploadPage() {
         setErrorMessage("请先选择科目并上传文件。");
         return;
       }
+      if (file.size > maxUploadSize) {
+        setErrorMessage("文件不能超过 50MB。");
+        return;
+      }
       setErrorMessage("");
+      setUploadProgress(null);
       const resource = await uploadResource({
         description,
         file,
+        onProgress: setUploadProgress,
       });
       await navigate(`/resources/${resource.id}`);
     },
@@ -53,6 +70,7 @@ export function UploadPage() {
       manual: true,
     },
   );
+  const selectedFileUsesChunks = file ? shouldUseChunkedUpload(file) : false;
 
   const createSubjectRequest = useRequest(
     async () => {
@@ -212,11 +230,44 @@ export function UploadPage() {
             label="上传文件"
             placeholder="拖入或选择一个文件"
             value={file}
-            onChange={setFile}
+            onChange={(nextFile) => {
+              setFile(nextFile);
+              setUploadProgress(null);
+              setErrorMessage("");
+            }}
             radius="xl"
+            leftSection={<FileUp size={16} />}
             clearable
             required
           />
+          {file ? (
+            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-ink-strong)]">{file.name}</p>
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                    {formatFileSize(file.size)} · 最大 {formatFileSize(maxUploadSize)} ·
+                    {selectedFileUsesChunks
+                      ? ` 将按 ${formatFileSize(uploadChunkSize)} 分片断点续传`
+                      : " 将使用快速上传"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {uploadProgress ? (
+            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-strong)]">
+                  <Gauge size={16} />
+                  上传进度
+                </p>
+                <p className="text-sm font-bold text-[var(--color-sky-strong)]">{uploadProgress.percent}%</p>
+              </div>
+              <Progress value={uploadProgress.percent} radius="xl" color="sky" size="md" className="mt-3" />
+            </div>
+          ) : null}
 
           {errorMessage ? (
             <Alert

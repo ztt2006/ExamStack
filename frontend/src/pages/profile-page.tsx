@@ -1,10 +1,27 @@
-import { Alert, FileInput, Loader, Modal, TextInput, Textarea } from "@mantine/core";
+import { Alert, FileInput, Loader, Modal, Progress, TextInput, Textarea } from "@mantine/core";
 import { useDebounce, useRequest } from "ahooks";
-import { AlertCircle, Pencil, Plus, Search, Trash2, UploadCloud } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileUp,
+  Gauge,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { uploadResource } from "@/api/resources";
+import {
+  getMaxUploadSize,
+  getUploadChunkSize,
+  shouldUseChunkedUpload,
+  uploadResource,
+  type UploadProgress,
+} from "@/api/resources";
 import {
   deleteMyResource,
   getMyResourceDetail,
@@ -15,6 +32,10 @@ import { EmptyState } from "@/components/common/empty-state";
 import { ResourceTable } from "@/components/resource/resource-table";
 import { Button } from "@/components/ui/button";
 import type { Resource } from "@/types";
+import { formatFileSize } from "@/utils/resource";
+
+const maxUploadSize = getMaxUploadSize();
+const uploadChunkSize = getUploadChunkSize();
 
 export function ProfilePage() {
   const [pageSize, setPageSize] = useState(10);
@@ -25,6 +46,7 @@ export function ProfilePage() {
   const [deleteOpened, setDeleteOpened] = useState(false);
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
@@ -59,13 +81,20 @@ export function ProfilePage() {
         setUploadErrorMessage("请先选择一个文件。");
         return;
       }
+      if (uploadFile.size > maxUploadSize) {
+        setUploadErrorMessage("文件不能超过 50MB。");
+        return;
+      }
       setUploadErrorMessage("");
+      setUploadProgress(null);
       await uploadResource({
         description: uploadDescription,
         file: uploadFile,
+        onProgress: setUploadProgress,
       });
       setUploadDescription("");
       setUploadFile(null);
+      setUploadProgress(null);
       setUploadOpened(false);
       setPage(1);
       await refreshData();
@@ -141,6 +170,7 @@ export function ProfilePage() {
   );
 
   const myItems = myResourcesRequest.data?.items ?? [];
+  const selectedUploadUsesChunks = uploadFile ? shouldUseChunkedUpload(uploadFile) : false;
 
   const openEditModal = (resource: Resource) => {
     void detailRequest.run(resource.id);
@@ -179,6 +209,7 @@ export function ProfilePage() {
               onClick={() => {
                 setUploadDescription("");
                 setUploadFile(null);
+                setUploadProgress(null);
                 setUploadErrorMessage("");
                 setUploadOpened(true);
               }}
@@ -265,35 +296,118 @@ export function ProfilePage() {
       <Modal
         opened={uploadOpened}
         onClose={() => setUploadOpened(false)}
-        title="新增上传"
+        title={
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-sky-strong)]">
+              Resumable Upload
+            </p>
+            <h2 className="mt-1 font-heading text-2xl font-semibold text-[var(--color-ink-strong)]">
+              新增上传
+            </h2>
+          </div>
+        }
         centered
         radius="xl"
+        size="lg"
+        padding={0}
+        overlayProps={{ opacity: 0.36, blur: 2 }}
+        classNames={{
+          content: "overflow-hidden border border-white/70 bg-[oklch(0.985_0.012_232)] shadow-[0_28px_80px_oklch(0.55_0.06_230/.18)]",
+          header: "border-b border-[oklch(0.9_0.03_230)] bg-[linear-gradient(180deg,oklch(1_0.002_230),oklch(0.975_0.018_226))] px-6 py-5",
+          body: "bg-[linear-gradient(180deg,oklch(0.995_0.01_232),oklch(0.975_0.018_228))]",
+          close: "rounded-full text-[var(--color-ink-soft)] hover:bg-white/80",
+        }}
       >
         <form
-          className="grid gap-4"
+          className="grid gap-5 p-5 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
             void uploadRequest.run();
           }}
         >
-          <Textarea
-            label="资料说明"
-            placeholder="写一句清楚的描述，方便后续搜索和辨认"
-            value={uploadDescription}
-            onChange={(event) => setUploadDescription(event.currentTarget.value)}
-            radius="xl"
-            minRows={4}
-            required
-          />
-          <FileInput
-            label="文件"
-            placeholder="选择一个文档、PDF 或图片"
-            value={uploadFile}
-            onChange={setUploadFile}
-            radius="xl"
-            clearable
-            required
-          />
+          <div className="rounded-[1.25rem] border border-[oklch(0.9_0.03_230)] bg-white/75 p-4 shadow-[inset_0_1px_0_white]">
+            <div className="flex items-start gap-3">
+              <div className="metric-icon h-11 w-11 shrink-0">
+                <FileUp size={20} />
+              </div>
+              <div>
+                <p className="font-heading text-lg font-semibold text-[var(--color-ink-strong)]">
+                  支持最大 {formatFileSize(maxUploadSize)} 文件
+                </p>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+                  大于 {formatFileSize(uploadChunkSize)} 的文件会自动分片上传；同一文件重试时会跳过已上传分片。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+              <Textarea
+                label="资料说明"
+                placeholder="写一句清楚的描述，方便后续搜索和辨认"
+                value={uploadDescription}
+                onChange={(event) => setUploadDescription(event.currentTarget.value)}
+                radius="xl"
+                minRows={4}
+                required
+              />
+            </div>
+            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/70 p-3">
+              <FileInput
+                label="上传文件"
+                placeholder="选择一个文档、PDF 或图片"
+                value={uploadFile}
+                onChange={(file) => {
+                  setUploadFile(file);
+                  setUploadProgress(null);
+                  setUploadErrorMessage("");
+                }}
+                radius="xl"
+                leftSection={<UploadCloud size={16} />}
+                clearable
+                required
+              />
+
+              {uploadFile ? (
+                <div className="mt-3 rounded-[1rem] border border-[oklch(0.91_0.03_228)] bg-[oklch(0.995_0.012_230/.92)] p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--color-ink-strong)]">
+                        {uploadFile.name}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                        {formatFileSize(uploadFile.size)} · {selectedUploadUsesChunks ? "分片断点续传" : "普通上传"}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[oklch(0.88_0.04_224)] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[var(--color-sky-strong)]">
+                      {selectedUploadUsesChunks ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
+                      {selectedUploadUsesChunks ? "可续传" : "快速提交"}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {uploadProgress ? (
+            <div className="rounded-[1.1rem] border border-[oklch(0.9_0.03_230)] bg-white/75 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-strong)]">
+                  <Gauge size={16} />
+                  上传进度
+                </p>
+                <p className="text-sm font-bold text-[var(--color-sky-strong)]">
+                  {uploadProgress.percent}%
+                </p>
+              </div>
+              <Progress value={uploadProgress.percent} radius="xl" color="sky" size="md" className="mt-3" />
+              <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+                已上传 {uploadProgress.uploadedChunks}/{uploadProgress.totalChunks} 个分片
+                {uploadProgress.resumed ? "，已从上次中断位置继续。" : "。"}
+              </p>
+            </div>
+          ) : null}
 
           {uploadErrorMessage ? (
             <Alert

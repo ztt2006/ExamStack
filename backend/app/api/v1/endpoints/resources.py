@@ -5,6 +5,7 @@ from app.core.deps import get_current_user
 from app.core.response import success_response
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.resource import ChunkedUploadCompleteRequest, ChunkedUploadInitRequest
 from app.services.resource_service import ResourceService
 
 
@@ -22,6 +23,47 @@ def create_resource(
         current_user=current_user,
         description=description,
         upload_file=file,
+    )
+    return success_response(ResourceService(db).to_response(resource).model_dump(mode="json"), status_code=201)
+
+
+@router.post("/chunked/init")
+def init_chunked_upload(
+    payload: ChunkedUploadInitRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    response = ResourceService(db).init_chunked_upload(current_user=current_user, payload=payload)
+    return success_response(response.model_dump(mode="json"))
+
+
+@router.post("/chunked/chunk")
+def upload_chunk(
+    upload_id: str = Form(...),
+    chunk_index: int = Form(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    response = ResourceService(db).save_chunk(
+        current_user=current_user,
+        upload_id=upload_id,
+        chunk_index=chunk_index,
+        upload_file=file,
+    )
+    return success_response(response.model_dump(mode="json"))
+
+
+@router.post("/chunked/complete")
+def complete_chunked_upload(
+    payload: ChunkedUploadCompleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resource = ResourceService(db).complete_chunked_upload(
+        current_user=current_user,
+        upload_id=payload.upload_id,
+        description=payload.description,
     )
     return success_response(ResourceService(db).to_response(resource).model_dump(mode="json"), status_code=201)
 

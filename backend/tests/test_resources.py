@@ -100,6 +100,127 @@ def test_create_and_filter_resources(fake_cos_storage) -> None:
     assert my_uploads_response.json()["data"]["items"][0]["id"] == resource_id
 
 
+def test_direct_upload_rejects_files_larger_than_50mb(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    oversized_content = b"x" * (50 * 1024 * 1024 + 1)
+    create_response = client.post(
+        "/api/v1/resources",
+        data={"description": "Oversized upload"},
+        files={"file": ("huge.pdf", oversized_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert create_response.status_code == 400
+    assert create_response.json()["message"] == "file too large"
+    assert fake_cos_storage == {}
+
+
+def test_direct_upload_accepts_files_up_to_50mb(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    content = b"x" * (30 * 1024 * 1024)
+    create_response = client.post(
+        "/api/v1/resources",
+        data={"description": "Large but allowed upload"},
+        files={"file": ("large.pdf", content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert create_response.status_code == 201
+    assert create_response.json()["data"]["file_size"] == len(content)
+    assert len(fake_cos_storage) == 1
+
+
+def test_chunked_upload_can_resume_and_complete(fake_cos_storage) -> None:
+    client = TestClient(create_app())
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    file_key = "resume-demo-key"
+    full_content = b"hello " + b"chunked " + b"upload"
+
+    init_response = client.post(
+        "/api/v1/resources/chunked/init",
+        json={
+            "file_key": file_key,
+            "filename": "resume.txt",
+            "file_size": len(full_content),
+            "mime_type": "text/plain",
+            "chunk_size": 8,
+        },
+        headers=headers,
+    )
+    assert init_response.status_code == 200
+    init_payload = init_response.json()["data"]
+    assert init_payload["upload_id"]
+    assert init_payload["uploaded_chunks"] == []
+
+    upload_id = init_payload["upload_id"]
+    first_chunk_response = client.post(
+        "/api/v1/resources/chunked/chunk",
+        data={"upload_id": upload_id, "chunk_index": 0},
+        files={"file": ("chunk-0", full_content[:8], "application/octet-stream")},
+        headers=headers,
+    )
+    assert first_chunk_response.status_code == 200
+    assert first_chunk_response.json()["data"]["uploaded_chunks"] == [0]
+
+    resume_response = client.post(
+        "/api/v1/resources/chunked/init",
+        json={
+            "file_key": file_key,
+            "filename": "resume.txt",
+            "file_size": len(full_content),
+            "mime_type": "text/plain",
+            "chunk_size": 8,
+        },
+        headers=headers,
+    )
+    assert resume_response.status_code == 200
+    assert resume_response.json()["data"]["upload_id"] == upload_id
+    assert resume_response.json()["data"]["uploaded_chunks"] == [0]
+
+    second_chunk_response = client.post(
+        "/api/v1/resources/chunked/chunk",
+        data={"upload_id": upload_id, "chunk_index": 1},
+        files={"file": ("chunk-1", full_content[8:16], "application/octet-stream")},
+        headers=headers,
+    )
+    assert second_chunk_response.status_code == 200
+    assert second_chunk_response.json()["data"]["uploaded_chunks"] == [0, 1]
+
+    third_chunk_response = client.post(
+        "/api/v1/resources/chunked/chunk",
+        data={"upload_id": upload_id, "chunk_index": 2},
+        files={"file": ("chunk-2", full_content[16:], "application/octet-stream")},
+        headers=headers,
+    )
+    assert third_chunk_response.status_code == 200
+    assert third_chunk_response.json()["data"]["uploaded_chunks"] == [0, 1, 2]
+
+    complete_response = client.post(
+        "/api/v1/resources/chunked/complete",
+        json={
+            "upload_id": upload_id,
+            "description": "Resumable upload",
+        },
+        headers=headers,
+    )
+
+    assert complete_response.status_code == 201
+    payload = complete_response.json()["data"]
+    assert payload["description"] == "Resumable upload"
+    assert payload["original_filename"] == "resume.txt"
+    assert payload["file_size"] == len(full_content)
+    assert len(fake_cos_storage) == 1
+    stored_object = next(iter(fake_cos_storage.values()))
+    assert stored_object["body"] == full_content
+
+
 def test_user_can_update_and_delete_own_resource(fake_cos_storage) -> None:
     client = TestClient(create_app())
     token = _register_and_login(client)

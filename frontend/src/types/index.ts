@@ -15,6 +15,7 @@ export interface User {
   username: string;
   email: string;
   school: string;
+  avatar_url?: string | null;
   points: number;
   created_at?: string;
 }
@@ -56,6 +57,7 @@ export interface ProfileSummary {
   username: string;
   email: string;
   school: string;
+  avatar_url?: string | null;
   points: number;
   uploaded_count: number;
 }

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
         default=str(BASE_DIR / "app" / "static" / "uploads"),
         alias="UPLOAD_DIR",
     )
-    max_upload_size_mb: int = Field(default=20, alias="MAX_UPLOAD_SIZE_MB")
+    max_upload_size_mb: int = Field(default=50, alias="MAX_UPLOAD_SIZE_MB")
     cos_secret_id: str = Field(default="", alias="COS_SECRET_ID")
     cos_secret_key: str = Field(default="", alias="COS_SECRET_KEY")
     cos_region: str = Field(default="", alias="COS_REGION")

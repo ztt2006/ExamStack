@@ -8,6 +8,7 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     school: str
+    avatar_url: str | None = None
     points: int
     created_at: datetime | None = None
 
