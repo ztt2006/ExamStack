@@ -25,3 +25,19 @@ def test_application_exception_is_handled() -> None:
     assert payload["code"] == 4000
     assert payload["message"] == "demo error"
     assert payload["data"] is None
+
+
+def test_cors_allows_any_origin_preflight_requests() -> None:
+    client = TestClient(create_app())
+
+    response = client.options(
+        "/api/v1/health",
+        headers={
+            "Origin": "http://example.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "access-control-allow-credentials" not in response.headers
